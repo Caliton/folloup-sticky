@@ -596,7 +596,7 @@ std::vector<overlay_runtime::StickyNoteItem> BuildFollowUpStickyItems()
             entry.metadata.time_valid, entry.metadata.created_unix_seconds);
         item.header.minute_seconds_text =
             timeline_format::FormatDurationLabel(entry.metadata.duration_ms);
-        item.body_text = has_transcription ? transcript : "Audio only follow-up item.";
+        item.body_text = has_transcription ? transcript : "Acompanhamento só em áudio.";
         items.push_back(std::move(item));
     }
     return items;
@@ -610,7 +610,7 @@ void ShowFollowUpStickyNotes()
     if (items.empty()) {
         epaper_ui::ToastState toast = {};
         toast.visible = true;
-        toast.body_text = "Follow up on a thought to view";
+        toast.body_text = "Nada para acompanhar ainda";
         toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kPin);
         (void)overlay_runtime::ShowToastForDuration(toast, 2000);
         return;
@@ -791,7 +791,7 @@ epaper_ui::SelectModalState BuildRecordingTagSelectModalState()
 {
     epaper_ui::SelectModalState state = {};
     state.visible = true;
-    state.title_text = "Save recording as";
+    state.title_text = "Salvar gravação como";
     state.selected_index = 0;
     for (const auto& option : recording_session_service::TagOptions()) {
         state.items.push_back({
@@ -903,7 +903,7 @@ void HandleRecordingSessionEvent(const recording_session_service::Event& event, 
         }
         case recording_session_service::Phase::kTranscribing: {
             const esp_err_t err = overlay_runtime::ShowToast(
-                BuildToast("Transcribing recording...", EmbeddedIconId::kTranscribe));
+                BuildToast("Transcrevendo gravação...", EmbeddedIconId::kTranscribe));
             FlushOverlayFeedback();
             if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
                 ESP_LOGW(kTag, "Show transcription toast failed: %s", esp_err_to_name(err));
@@ -913,16 +913,16 @@ void HandleRecordingSessionEvent(const recording_session_service::Event& event, 
         case recording_session_service::Phase::kComplete: {
             epaper_ui::ToastState toast = {};
             if (event.snapshot.transcript_saved) {
-                toast = BuildToast("Transcript saved to SD", EmbeddedIconId::kFileTranscript);
+                toast = BuildToast("Transcrição salva no cartão SD", EmbeddedIconId::kFileTranscript);
             } else if (!event.snapshot.last_error_code.empty()) {
                 // Transcription was attempted but failed. Surface it as a failure (the recording
                 // itself is still on SD) with a specific message for a quota/rate-limit error.
                 const bool quota_exceeded =
                     event.snapshot.last_error_code == "RESOURCE_EXHAUSTED";
-                toast = BuildToast(quota_exceeded ? "Gemini quota exceeded" : "Transcription failed",
+                toast = BuildToast(quota_exceeded ? "Cota do Gemini esgotada" : "Falha na transcrição",
                                    EmbeddedIconId::kClose);
             } else if (event.snapshot.clip_saved) {
-                toast = BuildToast("Recording saved to SD", EmbeddedIconId::kCheck);
+                toast = BuildToast("Gravação salva no cartão SD", EmbeddedIconId::kCheck);
             } else {
                 toast = BuildToast(event.snapshot.last_status_message.c_str(), EmbeddedIconId::kClose);
             }
@@ -939,7 +939,7 @@ void HandleRecordingSessionEvent(const recording_session_service::Event& event, 
         }
         case recording_session_service::Phase::kFailed: {
             const char* text = event.snapshot.last_status_message.empty()
-                                   ? "Recording failed"
+                                   ? "Falha na gravação"
                                    : event.snapshot.last_status_message.c_str();
             const esp_err_t err = overlay_runtime::ShowToastForDuration(
                 BuildToast(text, EmbeddedIconId::kClose), 2500);
@@ -1001,7 +1001,7 @@ void HandleSummaryEvent(const summary_service::Event& event, void*)
             break;
         case summary_service::RequestPhase::kFailed: {
             const char* text =
-                request.status_message.empty() ? "Summary failed" : request.status_message.c_str();
+                request.status_message.empty() ? "Falha no resumo" : request.status_message.c_str();
             err = overlay_runtime::ShowToastForDuration(BuildToast(text, EmbeddedIconId::kClose),
                                                         2500);
             break;

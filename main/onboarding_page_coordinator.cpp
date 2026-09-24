@@ -17,27 +17,27 @@ struct Slide {
 };
 
 constexpr std::array<Slide, 6> kSlides = {{
-    {"Welcome to Folloup",
-     "Your pocket voice notebook. Capture thoughts out loud and let Folloup keep them organized.",
+    {"Boas-vindas ao Followup",
+     "Seu caderno de voz de bolso. Registre ideias em voz alta e deixe o Followup organizá-las.",
      EmbeddedImageId::kSlide1},
-    {"Capture in a tap",
-     "Press the mic to record a note, an idea, or a task. Everything is saved straight to the SD "
-     "card. Double-press to lock the screen.",
+    {"Grave num toque",
+     "Aperte o mic para gravar uma nota, ideia ou tarefa. Tudo é salvo no cartão SD. Aperte duas "
+     "vezes para bloquear a tela.",
      EmbeddedImageId::kSlide2},
-    {"Navigate with keys",
-     "Key 1 selects, key 2 navigates up, and key 3 navigates down. Hold key 3 to exit certain "
-     "components.",
+    {"Navegue pelas teclas",
+     "A tecla 1 seleciona, a tecla 2 sobe e a tecla 3 desce. Segure a tecla 3 para sair de alguns "
+     "componentes.",
      EmbeddedImageId::kSlide3},
-    {"Sleep & power",
-     "The device sleeps when inactive. Hold keys 1 and 2 to shut it down; press and hold key 1 to "
-     "turn it on.",
+    {"Repouso e energia",
+     "O aparelho repousa quando inativo. Segure as teclas 1 e 2 para desligar; segure a tecla 1 "
+     "para ligar.",
      EmbeddedImageId::kSlide4},
-    {"Summaries with Gemini",
-     "Connect Gemini and let Folloup transcribe your recordings and summarize your day for you.",
+    {"Resumos com o Gemini",
+     "Conecte o Gemini e deixe o Followup transcrever suas gravações e resumir o seu dia.",
      EmbeddedImageId::kSlide5},
-    {"Notes, Todos & Follow-ups",
-     "Recordings are grouped by day. Browse them as Notes, mark tasks as Todos, and pin anything as "
-     "a follow-up.",
+    {"Notas, tarefas e mais",
+     "Tudo fica agrupado por dia. Veja em Notas, marque tarefas em Tarefas e fixe o que quiser em "
+     "Acompanhar.",
      EmbeddedImageId::kSlide6},
 }};
 

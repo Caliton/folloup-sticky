@@ -13,7 +13,7 @@ namespace epaper_ui {
 
 struct TodosPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Todos";
+    std::string title_text = "Tarefas";
     TimelineListState timeline = {};
 
     bool operator==(const TodosPageState& other) const = default;

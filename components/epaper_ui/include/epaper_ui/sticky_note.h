@@ -15,7 +15,7 @@ namespace epaper_ui {
 // page from just below the status bar with a 20px margin on every screen edge, drops a modal-style
 // shadow, and wears the vibe card's surface look. Content is a plain-text date, the header row, and
 // the transcript body (a scroll container). The footer carries a Close button plus Prev/Next chevrons
-// (carousel order) on the right and an "N/M Stickies" counter on the left. Prev/Next wrap around.
+// (carousel order) on the right and an "N de M" counter on the left. Prev/Next wrap around.
 enum class StickyNoteControl : int {
     kNone = -1,
     kClose = 0,
@@ -29,7 +29,7 @@ inline constexpr int kStickyNoteControlCount = 3;
 struct StickyNoteState {
     bool visible = false;
     int active_index = 0;  // 0-based index of the sticky on screen
-    int sticky_count = 0;  // total stickies, for the "N/M Stickies" counter
+    int sticky_count = 0;  // total stickies, for the "N de M" counter
     // Content: a plain-text recorded date on top, then the header row and the transcript body.
     std::string date_text = {};
     ListItemHeaderState header = {};

@@ -15,25 +15,32 @@ std::string FormatStorageBytes(uint64_t bytes)
     if (bytes >= kGigabyte) {
         std::snprintf(buffer,
                       sizeof(buffer),
-                      "%.1f GB free",
+                      "%.1f GB livres",
                       static_cast<double>(bytes) / static_cast<double>(kGigabyte));
     } else if (bytes >= kMegabyte) {
         std::snprintf(buffer,
                       sizeof(buffer),
-                      "%.1f MB free",
+                      "%.1f MB livres",
                       static_cast<double>(bytes) / static_cast<double>(kMegabyte));
     } else if (bytes >= kKilobyte) {
         std::snprintf(buffer,
                       sizeof(buffer),
-                      "%.1f KB free",
+                      "%.1f KB livres",
                       static_cast<double>(bytes) / static_cast<double>(kKilobyte));
     } else {
         std::snprintf(buffer,
                       sizeof(buffer),
-                      "%llu B free",
+                      "%llu B livres",
                       static_cast<unsigned long long>(bytes));
     }
-    return std::string(buffer);
+    // pt-BR decimal separator: "1,5 GB livres".
+    std::string text(buffer);
+    for (char& ch : text) {
+        if (ch == '.') {
+            ch = ',';
+        }
+    }
+    return text;
 }
 
 }  // namespace
@@ -73,15 +80,15 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
 
     epaper_ui::SettingsPageState state = {};
     state.navigation_focus_index = focus_.index();
-    state.title_text = "Settings";
+    state.title_text = "Configurações";
     state.wifi_toggle = {
-        .label_text = "WiFi",
+        .label_text = "Wi-Fi",
         .toggle_state = BuildToggleState(
             wifi_state.wifi_enabled,
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsWifiToggle)),
     };
     state.access_point_toggle = {
-        .label_text = "Access Point",
+        .label_text = "Ponto de acesso",
         .toggle_state = BuildToggleState(
             wifi_state.access_point_mode,
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsEnableApToggle)),
@@ -96,13 +103,13 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
 
     // Label tracks the mode so the button reads correctly if the page is revisited while
     // OTG is active or mid-transition.
-    std::string_view otg_label = "Enable OTG";
+    std::string_view otg_label = "Ativar OTG";
     if (storage_snapshot.mode == storage_service::Mode::kUsbMounted) {
-        otg_label = "Disable OTG";
+        otg_label = "Desativar OTG";
     } else if (storage_snapshot.mode == storage_service::Mode::kEnteringUsbMode) {
-        otg_label = "Enabling OTG";
+        otg_label = "Ativando OTG";
     } else if (storage_snapshot.mode == storage_service::Mode::kExitingUsbMode) {
-        otg_label = "Disabling OTG";
+        otg_label = "Desativando OTG";
     }
     state.enable_otg_button = {
         .label_text = otg_label,
@@ -110,11 +117,11 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsEnableOtgButton),
     };
 
-    std::string_view format_label = "Format SD";
+    std::string_view format_label = "Formatar cartão SD";
     if (storage_snapshot.mode == storage_service::Mode::kFormatting ||
         (storage_snapshot.operation == storage_service::Operation::kFormatSd &&
          storage_snapshot.phase == storage_service::OperationPhase::kStarted)) {
-        format_label = "Formatting SD";
+        format_label = "Formatando cartão SD";
     }
     state.format_sd_button = {
         .label_text = format_label,

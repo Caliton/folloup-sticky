@@ -240,7 +240,7 @@ void OpenMenuItem(int menu_index)
              epaper_ui::DashboardMenuItemLabel(menu_index));
     epaper_ui::ToastState toast = {};
     toast.visible = true;
-    toast.body_text = "Coming soon";
+    toast.body_text = "Em breve";
     (void)overlay_runtime::ShowToastForDuration(toast, 1500);
 }
 

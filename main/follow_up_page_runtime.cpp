@@ -276,20 +276,20 @@ bool ShowItemActionsModal()
             .follow_up_completed = entry->follow_up_completed,
         };
         s_item_actions.clear();
-        modal.title_text = "Follow up";
+        modal.title_text = "Acompanhar";
         // Only offered when the row actually has audio on the card; a transcript-only
         // entry would otherwise show an action that silently does nothing.
         if (!entry->recording_path.empty()) {
-            modal.items.push_back({"Play recording"});
+            modal.items.push_back({"Ouvir gravação"});
             s_item_actions.push_back(ItemAction::kPlayRecording);
         }
-        modal.items.push_back({"View details"});
+        modal.items.push_back({"Ver detalhes"});
         s_item_actions.push_back(ItemAction::kViewDetails);
-        modal.items.push_back({"Complete follow-up"});
+        modal.items.push_back({"Concluir acompanhamento"});
         s_item_actions.push_back(ItemAction::kCompleteFollowUp);
-        modal.items.push_back({"Delete"});
+        modal.items.push_back({"Excluir"});
         s_item_actions.push_back(ItemAction::kDelete);
-        modal.items.push_back({"Close"});
+        modal.items.push_back({"Fechar"});
         s_item_actions.push_back(ItemAction::kClose);
         modal.selected_index = 0;
         s_item_actions_pending = true;

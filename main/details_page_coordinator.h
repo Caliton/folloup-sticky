@@ -65,7 +65,7 @@ private:
     DetailsPageSource pending_source_page_ = DetailsPageSource::kUnknown;
     std::string recording_id_ = {};
     DetailsPageSource source_page_ = DetailsPageSource::kUnknown;
-    std::string title_text_ = "Details";
+    std::string title_text_ = "Detalhes";
     epaper_ui::ListItemHeaderState recording_header_ = {};
     std::string transcript_text_ = {};
     bool has_transcript_ = false;

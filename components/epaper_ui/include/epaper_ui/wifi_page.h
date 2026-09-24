@@ -23,7 +23,7 @@ enum class WifiPageItemId : uint8_t {
 
 struct WifiPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "WiFi Setup";
+    std::string title_text = "Wi-Fi";
     NetworkListState network_list = {};
     PasswordInputState password_input = {};
     ButtonState scan_button = {};

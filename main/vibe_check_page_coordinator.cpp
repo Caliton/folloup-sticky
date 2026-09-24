@@ -16,9 +16,9 @@ using recording_archive_service::RecordingMetadata;
 using recording_archive_service::RecordingTag;
 
 constexpr const char* kMessageText =
-    "Some thoughts are passing vibes. Drop it, or follow up on what still hits.";
-constexpr const char* kEmptyStateMessage = "Get the ball rolling! Capture some ideas!";
-constexpr const char* kAudioOnlyMessage = "Audio only note...";
+    "Algumas ideias passam. Descarte ou acompanhe o que ainda faz sentido.";
+constexpr const char* kEmptyStateMessage = "Bora começar! Grave algumas ideias!";
+constexpr const char* kAudioOnlyMessage = "Nota só em áudio...";
 
 std::string FormatArchiveDateLabel(const RecordingMetadata& metadata)
 {
@@ -296,8 +296,8 @@ void VibeCheckPageCoordinator::RebuildCardState()
     const RecordingEntry* entry = FindCurrentIdea();
     if (entry == nullptr) {
         card_state_.empty = true;
-        progress_state_.label_text = "Your ideas";
-        progress_state_.status_text = "0/0 ideas";
+        progress_state_.label_text = "Suas ideias";
+        progress_state_.status_text = "0/0 ideias";
         progress_state_.progress_percent = 0;
         return;
     }
@@ -315,11 +315,11 @@ void VibeCheckPageCoordinator::RebuildCardState()
         entry->metadata.has_transcript && !transcript.empty() ? transcript : kAudioOnlyMessage;
 
     const size_t remaining = ideas_.size();
-    progress_state_.label_text = "Your ideas";
+    progress_state_.label_text = "Suas ideias";
     progress_state_.status_text =
-        remaining == 0 ? "0/0 ideas"
+        remaining == 0 ? "0/0 ideias"
                        : std::to_string(remaining) + "/" + std::to_string(initial_idea_count_) +
-                             " ideas";
+                             " ideias";
     progress_state_.progress_percent =
         initial_idea_count_ == 0 ? 0
                                  : static_cast<int>((remaining * 100U) / initial_idea_count_);

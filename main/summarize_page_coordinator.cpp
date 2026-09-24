@@ -7,8 +7,8 @@ namespace {
 using page_navigation::NavigationItemRole;
 
 constexpr int kScrollStepPercent = 10;
-constexpr const char* kConnectToGeminiMessage = "Connect to Gemini for summaries";
-constexpr const char* kEmptyStateMessage = "Summarize your thoughts";
+constexpr const char* kConnectToGeminiMessage = "Conecte o Gemini para gerar resumos";
+constexpr const char* kEmptyStateMessage = "Resuma suas ideias";
 
 }  // namespace
 
@@ -127,7 +127,7 @@ epaper_ui::SummarizePageState SummarizePageCoordinator::BuildState(
     epaper_ui::SummarizePageState state = {};
     state.navigation_focus_index = focus_.index();
 
-    state.segment_control.labels = {"Notes", "Todos", ""};
+    state.segment_control.labels = {"Notas", "Tarefas", ""};
     state.segment_control.segment_count = epaper_ui::kSegmentControlDefaultSegmentCount;
     state.segment_control.selected_index = selected_segment_index_;
     state.segment_control.focused =
@@ -143,7 +143,7 @@ epaper_ui::SummarizePageState SummarizePageCoordinator::BuildState(
     state.scroll_container.scroll_position_percent =
         scroll_position_percent_[static_cast<size_t>(selected_segment_index_)];
 
-    state.get_summary_button.label_text = "Get summary";
+    state.get_summary_button.label_text = "Gerar resumo";
     state.get_summary_button.selected =
         IsRoleFocused(NavigationItemRole::kSummarizePageGetSummaryButton);
     return state;

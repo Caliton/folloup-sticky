@@ -15,7 +15,7 @@ namespace epaper_ui {
 
 struct DetailsPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Details";
+    std::string title_text = "Detalhes";
     ListItemHeaderState recording_header = {};
     ScrollContainerState scroll_container = {};
     ButtonState back_button = {};

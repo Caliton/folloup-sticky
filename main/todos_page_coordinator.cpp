@@ -83,8 +83,8 @@ void TodosPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& record
         timeline_entry.item.header.time_text = timeline_format::FormatTimeLabel(entry.metadata.time_valid, entry.metadata.created_unix_seconds);
         timeline_entry.item.header.minute_seconds_text =
             timeline_format::FormatDurationLabel(entry.metadata.duration_ms);
-        timeline_entry.item.header.tag_text = "Task";
-        timeline_entry.item.body_text = has_transcription ? transcript : "Audio only todo.";
+        timeline_entry.item.header.tag_text = "Tarefa";
+        timeline_entry.item.body_text = has_transcription ? transcript : "Tarefa só em áudio.";
         timeline_entry.item.accessory.kind = epaper_ui::ListItemAccessoryKind::kCheckbox;
         timeline_entry.item.accessory.checked = entry.metadata.completed;
         timeline_groups_[static_cast<size_t>(group_index)].entries.push_back(
@@ -92,7 +92,7 @@ void TodosPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& record
     }
 
     if (timeline_groups_.empty()) {
-        timeline_groups_.push_back({"today", "Today", {}});
+        timeline_groups_.push_back({"today", "Hoje", {}});
     }
 }
 
@@ -352,12 +352,13 @@ bool TodosPageCoordinator::IsRoleFocused(page_navigation::NavigationItemRole rol
 epaper_ui::TodosPageState TodosPageCoordinator::BuildState() const
 {
     epaper_ui::TodosPageState state = {};
-    state.title_text = "Todos";
+    state.title_text = "Tarefas";
     state.navigation_focus_index = focus_.index();
 
     epaper_ui::TimelineListState timeline = {};
-    timeline.item_label_plural = "Todos";
-    timeline.empty_state_text = "No todos available";
+    timeline.item_label_singular = "tarefa";
+    timeline.item_label_plural = "tarefas";
+    timeline.empty_state_text = "Nenhuma tarefa ainda";
     timeline.empty_state_icon_asset = project_assets::GetIcon(EmbeddedIconId::kTaskStart);
     timeline.visible_group_index = visible_group_index_;
     timeline.focused_group_index = FocusedTimelineGroupIndex();

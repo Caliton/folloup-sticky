@@ -294,7 +294,7 @@ ButtonResult ApplySettingsActivateResult(const settings_page_interactions::Activ
                 []() {
                     epaper_ui::ToastState toast = {};
                     toast.visible = true;
-                    toast.body_text = "Finish the recording first";
+                    toast.body_text = "Termine a gravação primeiro";
                     return toast;
                 }(),
                 2000);

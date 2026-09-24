@@ -9,8 +9,8 @@
 namespace epaper_ui {
 namespace {
 
-constexpr std::string_view kStorageLabel = "Ext storage";
-constexpr std::string_view kNoSdCardStatus = "No SD card";
+constexpr std::string_view kStorageLabel = "Cartão SD";
+constexpr std::string_view kNoSdCardStatus = "Sem cartão SD";
 
 const EmbeddedImageAsset* ResolveSdIcon()
 {

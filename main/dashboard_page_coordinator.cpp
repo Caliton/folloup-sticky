@@ -139,18 +139,19 @@ epaper_ui::DashboardPageState DashboardPageCoordinator::BuildState() const
     if (archive_.recording_count == 0) {
         state.shows_completion_banner = true;
         state.completion_banner.icon = EmbeddedIconId::kTaskStart;
-        state.completion_banner.message_text = "Capture your first note with the mic";
+        state.completion_banner.message_text = "Grave sua primeira nota com o microfone";
     } else {
         state.shows_completion_banner = false;
-        state.current_progress.label_text = "Task tracker";
+        state.current_progress.label_text = "Suas tarefas";
         const int total = archive_.todo_recording_count;
         const int done = archive_.completed_todo_count;
         if (total > 0) {
             state.current_progress.status_text =
-                std::to_string(done) + "/" + std::to_string(total) + " completed";
+                std::to_string(done) + "/" + std::to_string(total) +
+                (done == 1 ? " concluída" : " concluídas");
             state.current_progress.progress_percent = (done * 100) / total;
         } else {
-            state.current_progress.status_text = "No tasks yet";
+            state.current_progress.status_text = "Nenhuma tarefa ainda";
             state.current_progress.progress_percent = 0;
         }
     }

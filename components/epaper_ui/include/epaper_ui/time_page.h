@@ -27,8 +27,8 @@ enum class TimePageItemId : uint8_t {
 
 struct TimePageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Time setting";
-    std::string manual_heading_text = "Set manual time";
+    std::string title_text = "Data e hora";
+    std::string manual_heading_text = "Ajuste manual";
     SelectInputState timezone = {};
     TimeInputState hour = {};
     TimeInputState minute = {};

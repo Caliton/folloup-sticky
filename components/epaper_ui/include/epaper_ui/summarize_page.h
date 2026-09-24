@@ -15,7 +15,7 @@ namespace epaper_ui {
 
 struct SummarizePageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Summarize";
+    std::string title_text = "Resumir";
     SegmentControlState segment_control = {};
     ScrollContainerState scroll_container = {};
     ButtonState get_summary_button = {};

@@ -186,13 +186,13 @@ epaper_ui::TimePageState TimePageCoordinator::BuildState() const
     epaper_ui::TimePageState state = {};
     state.navigation_focus_index = focus_.index();
 
-    state.timezone.label_text = "Timezone";
-    state.timezone.placeholder_text = "Select timezone";
+    state.timezone.label_text = "Fuso horário";
+    state.timezone.placeholder_text = "Escolha o fuso";
     state.timezone.value_text = timezone_description_;
     state.timezone.focused = IsRoleFocused(NavigationItemRole::kTimePageTimezone);
 
     state.hour.value_text = hour_;
-    state.hour.suffix_text = "HR";
+    state.hour.suffix_text = "H";
     state.hour.max_length = 2;
     state.hour.focused = IsRoleFocused(NavigationItemRole::kTimePageHour);
 
@@ -215,11 +215,11 @@ epaper_ui::TimePageState TimePageCoordinator::BuildState() const
     state.day.focused = IsRoleFocused(NavigationItemRole::kTimePageDay);
 
     state.year.value_text = year_;
-    state.year.placeholder_text = "YYYY";
+    state.year.placeholder_text = "AAAA";
     state.year.max_length = 4;
     state.year.focused = IsRoleFocused(NavigationItemRole::kTimePageYear);
 
-    state.save.label_text = "Sync & Save";
+    state.save.label_text = "Sincronizar e salvar";
     state.save.selected = IsRoleFocused(NavigationItemRole::kTimePageSave);
     return state;
 }

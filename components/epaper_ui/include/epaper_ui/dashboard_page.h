@@ -30,9 +30,9 @@ struct DashboardPageMenuState {
     bool shows_follow_up_badge = false;
     bool shows_notes_badge = false;
     bool shows_todos_badge = false;
-    std::string follow_up_badge_text = "New";
-    std::string notes_badge_text = "New";
-    std::string todos_badge_text = "New";
+    std::string follow_up_badge_text = "Novo";
+    std::string notes_badge_text = "Novo";
+    std::string todos_badge_text = "Novo";
 
     bool operator==(const DashboardPageMenuState& other) const = default;
 };

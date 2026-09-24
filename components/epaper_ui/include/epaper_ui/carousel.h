@@ -40,7 +40,7 @@ struct CarouselStyle {
     uint8_t active_dot_color = design::carousel::kActiveDotColor;
     uint8_t inactive_dot_color = design::carousel::kInactiveDotColor;
     uint8_t disabled_control_color = design::carousel::kDisabledControlColor;
-    std::string_view close_label = "Close";
+    std::string_view close_label = "Fechar";
     // Compact text button (auto-fits the label rather than the wide default min width).
     ButtonStyle close_button = {
         .min_width = 0,

@@ -79,7 +79,7 @@ void FollowUpPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& rec
             timeline_format::FormatDurationLabel(entry.metadata.duration_ms);
         timeline_entry.item.header.tag_text = timeline_format::TagText(entry.metadata.tag);
         timeline_entry.item.body_text =
-            has_transcription ? transcript : "Audio only follow-up item.";
+            has_transcription ? transcript : "Acompanhamento só em áudio.";
         timeline_entry.item.accessory.kind = epaper_ui::ListItemAccessoryKind::kCheckbox;
         // The checkbox is a tap-to-complete affordance; completing clears the flag and the item
         // leaves the list, so it always renders unchecked.
@@ -89,7 +89,7 @@ void FollowUpPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& rec
     }
 
     if (timeline_groups_.empty()) {
-        timeline_groups_.push_back({"today", "Today", {}});
+        timeline_groups_.push_back({"today", "Hoje", {}});
     }
 }
 
@@ -333,12 +333,13 @@ bool FollowUpPageCoordinator::IsRoleFocused(page_navigation::NavigationItemRole 
 epaper_ui::FollowUpPageState FollowUpPageCoordinator::BuildState() const
 {
     epaper_ui::FollowUpPageState state = {};
-    state.title_text = "Follow up";
+    state.title_text = "Acompanhar";
     state.navigation_focus_index = focus_.index();
 
     epaper_ui::TimelineListState timeline = {};
-    timeline.item_label_plural = "Follow up";
-    timeline.empty_state_text = "No follow-up items available";
+    timeline.item_label_singular = "acompanhamento";
+    timeline.item_label_plural = "acompanhamentos";
+    timeline.empty_state_text = "Nada para acompanhar";
     timeline.empty_state_icon_asset = project_assets::GetIcon(EmbeddedIconId::kPin);
     timeline.visible_group_index = visible_group_index_;
     timeline.focused_group_index = FocusedTimelineGroupIndex();

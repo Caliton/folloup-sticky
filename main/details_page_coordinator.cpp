@@ -15,7 +15,7 @@ using recording_archive_service::RecordingTag;
 using page_navigation::NavigationItemRole;
 
 constexpr int kScrollStepPercent = 10;
-constexpr const char* kNoTranscriptMessage = "No transcript available.";
+constexpr const char* kNoTranscriptMessage = "Nenhuma transcrição disponível.";
 
 std::string TrimTranscript(const std::string& text)
 {
@@ -80,7 +80,7 @@ void DetailsPageCoordinator::Show(const std::vector<RecordingEntry>& recordings)
 {
     scroll_container_active_ = false;
     ResetScrollPosition();
-    title_text_ = "Details";
+    title_text_ = "Detalhes";
     recording_header_ = {};
     transcript_text_.clear();
     has_transcript_ = false;
@@ -103,7 +103,7 @@ void DetailsPageCoordinator::RefreshFromArchive(const std::vector<RecordingEntry
 {
     const RecordingEntry* entry = FindEntry(recordings);
     if (entry == nullptr) {
-        title_text_ = "Details";
+        title_text_ = "Detalhes";
         recording_header_ = {};
         transcript_text_.clear();
         has_transcript_ = false;
@@ -187,13 +187,13 @@ epaper_ui::DetailsPageState DetailsPageCoordinator::BuildState() const
         IsRoleFocused(NavigationItemRole::kDetailsPageScrollContainer) || scroll_container_active_;
     state.scroll_container.active = scroll_container_active_;
     state.scroll_container.scroll_position_percent = scroll_position_percent_;
-    state.back_button.label_text = "Back";
+    state.back_button.label_text = "Voltar";
     state.back_button.selected = IsRoleFocused(NavigationItemRole::kDetailsPageBackButton);
     // The primary action button sits beside Back: it plays the recording once a
     // transcript exists, and otherwise transcribes it. (The reused button/role is
     // still named "transcribe" in the layout; only the label and intent vary.)
     state.show_transcribe_button = true;
-    state.transcribe_button.label_text = has_transcript_ ? "Play" : "Transcribe";
+    state.transcribe_button.label_text = has_transcript_ ? "Ouvir" : "Transcrever";
     state.transcribe_button.selected =
         IsRoleFocused(NavigationItemRole::kDetailsPageTranscribeButton);
     return state;
@@ -220,7 +220,7 @@ void DetailsPageCoordinator::ApplyEntry(const RecordingEntry& entry)
     transcript_text_ = transcript;
     title_text_ = FormatDateLabel(entry.metadata);
     if (title_text_.empty()) {
-        title_text_ = "Details";
+        title_text_ = "Detalhes";
     }
 
     recording_header_ = {};

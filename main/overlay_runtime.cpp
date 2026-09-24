@@ -65,58 +65,58 @@ epaper_ui::CardModalState BuildCardModalState(CardModalPurpose purpose)
     state.visible = true;
     switch (purpose) {
         case CardModalPurpose::kShutdownConfirm:
-            state.title_text = "Shut down device?";
-            state.body_text = "Your device will power off. Do you want to continue?";
-            state.action_labels = {"Cancel", "Shut down"};
+            state.title_text = "Desligar o aparelho?";
+            state.body_text = "O aparelho será desligado. Deseja continuar?";
+            state.action_labels = {"Cancelar", "Desligar"};
             break;
         case CardModalPurpose::kStorageNoSdCard:
-            state.title_text = "No SD card";
-            state.body_text = "No SD card is inserted. Insert an SD card to continue.";
+            state.title_text = "Sem cartão SD";
+            state.body_text = "Nenhum cartão SD inserido. Insira um cartão SD para continuar.";
             state.action_labels = {"OK"};
             break;
         case CardModalPurpose::kStorageConfirmFormat:
-            state.title_text = "Format SD card?";
-            state.body_text = "Formatting the SD card will erase everything on the card.";
-            state.action_labels = {"Cancel", "Format"};
+            state.title_text = "Formatar o cartão SD?";
+            state.body_text = "A formatação vai apagar tudo o que está no cartão SD.";
+            state.action_labels = {"Cancelar", "Formatar"};
             break;
         case CardModalPurpose::kStorageUsbEntering:
-            state.title_text = "Enabling OTG";
+            state.title_text = "Ativando o OTG";
             // No actions: transient, and there is nothing safe to do mid-transition. A card
             // modal is only dismissed by its own buttons, so this is inherently sticky.
-            state.body_text = "Preparing OTG. Please wait...";
+            state.body_text = "Preparando o OTG. Aguarde...";
             state.action_labels = {};
             break;
         case CardModalPurpose::kStorageUsbActive:
-            state.title_text = "OTG mode enabled";
-            state.body_text = "Keep the USB cable connected to your computer. The SD card is "
-                              "unavailable to the device until you disable OTG.";
+            state.title_text = "Modo OTG ativado";
+            state.body_text = "Mantenha o cabo USB conectado. O cartão SD fica indisponível "
+                              "até você desativar o OTG.";
             // The only way out. Deliberately a single action so the modal cannot be
             // dismissed while the card still belongs to the host.
-            state.action_labels = {"Disable OTG mode"};
+            state.action_labels = {"Desativar modo OTG"};
             break;
         case CardModalPurpose::kStorageUsbNoCable:
-            state.title_text = "No USB connection";
-            state.body_text = "Connect the USB cable to a computer, then try again.";
+            state.title_text = "Sem conexão USB";
+            state.body_text = "Conecte o cabo USB a um computador e tente de novo.";
             state.action_labels = {"OK"};
             break;
         case CardModalPurpose::kStorageUsbError:
-            state.title_text = "OTG failed";
-            state.body_text = "There was an error and OTG could not be enabled.";
+            state.title_text = "Falha no OTG";
+            state.body_text = "Ocorreu um erro e não foi possível ativar o OTG.";
             state.action_labels = {"OK"};
             break;
         case CardModalPurpose::kStorageFormatting:
-            state.title_text = "Formatting SD card";
-            state.body_text = "Formatting in progress. Please wait...";
+            state.title_text = "Formatando o cartão SD";
+            state.body_text = "Formatação em andamento. Aguarde...";
             state.action_labels = {};
             break;
         case CardModalPurpose::kStorageFormatSuccess:
-            state.title_text = "Format success";
-            state.body_text = "The SD card was formatted successfully.";
+            state.title_text = "Cartão formatado";
+            state.body_text = "O cartão SD foi formatado com sucesso.";
             state.action_labels = {"OK"};
             break;
         case CardModalPurpose::kStorageFormatError:
-            state.title_text = "Format failed";
-            state.body_text = "There was an error and the SD card could not be formatted.";
+            state.title_text = "Falha na formatação";
+            state.body_text = "Ocorreu um erro e não foi possível formatar o cartão SD.";
             state.action_labels = {"OK"};
             break;
         case CardModalPurpose::kNone:

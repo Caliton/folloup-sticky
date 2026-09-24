@@ -85,7 +85,8 @@ std::string CounterText(const StickyNoteState& state)
 {
     const int total = std::max(0, state.sticky_count);
     const int current = total > 0 ? std::clamp(state.active_index, 0, total - 1) + 1 : 0;
-    return std::to_string(current) + "/" + std::to_string(total) + " follow ups";
+    // "1 de 3": a word-based counter would collide with the date on the left in pt-BR.
+    return std::to_string(current) + " de " + std::to_string(total);
 }
 
 // The transcript scroll-container region: below the top row (date + follow-up counter) and header,
@@ -220,7 +221,7 @@ void DrawStickyNote(uint8_t* framebuffer,
     const UiRect content = layout.content;
     int cursor_y = content.y;
 
-    // Top row: recorded date on the left, "N/M follow ups" counter on the right (vertically
+    // Top row: recorded date on the left, "N de M" counter on the right (vertically
     // centered to the date line). The counter shows even when there is no date.
     const int date_line = LineHeight(style.date_role);
     if (!state.date_text.empty()) {

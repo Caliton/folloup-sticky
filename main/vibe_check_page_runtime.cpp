@@ -281,7 +281,7 @@ void DeleteCurrentIdea()
         ESP_LOGW(kTag, "Delete idea failed: id=%s", recording_id.c_str());
         epaper_ui::ToastState toast = {};
         toast.visible = true;
-        toast.body_text = "Couldn't delete -- try again";
+        toast.body_text = "Erro ao excluir. Tente de novo";
         toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kDelete);
         (void)overlay_runtime::ShowToastForDuration(toast, 2000);
         return;
@@ -313,7 +313,7 @@ void PinCurrentIdea()
         ESP_LOGW(kTag, "Pin idea failed: id=%s", recording_id.c_str());
         epaper_ui::ToastState toast = {};
         toast.visible = true;
-        toast.body_text = "Couldn't follow up -- try again";
+        toast.body_text = "Erro ao acompanhar. Tente de novo";
         toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kCheck);
         (void)overlay_runtime::ShowToastForDuration(toast, 2000);
         return;

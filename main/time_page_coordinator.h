@@ -68,7 +68,7 @@ private:
     bool meridiem_pm_ = false;
     std::string month_ = {};   // "01".."12"
     std::string day_ = {};     // "01".."31"
-    std::string year_ = {};    // "YYYY"
+    std::string year_ = {};    // "AAAA"
     bool user_edited_ = false;
 };
 

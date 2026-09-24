@@ -13,7 +13,7 @@ namespace epaper_ui {
 
 struct FollowUpPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Follow up";
+    std::string title_text = "Acompanhar";
     TimelineListState timeline = {};
 
     bool operator==(const FollowUpPageState& other) const = default;

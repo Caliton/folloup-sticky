@@ -14,7 +14,7 @@ namespace epaper_ui {
 
 struct VibeCheckPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Vibe check";
+    std::string title_text = "Checar vibe";
     VibeCardState card = {};
     ProgressBarState progress = {};
     std::string message_text = {};

@@ -282,7 +282,7 @@ esp_err_t Save()
 
     epaper_ui::ToastState toast = {};
     toast.visible = true;
-    toast.body_text = result.success ? "Time saved" : "Couldn't save time";
+    toast.body_text = result.success ? "Horário salvo" : "Não foi possível salvar";
     toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kTime);
     (void)overlay_runtime::ShowToastForDuration(toast, 2000);
     return result.success ? ESP_OK : ESP_FAIL;
@@ -294,7 +294,7 @@ esp_err_t ShowTimezoneModal()
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         state.visible = true;
-        state.title_text = "Select timezone";
+        state.title_text = "Escolha o fuso";
         const int selected = s_coordinator.SelectedTimezoneIndex();
         state.selected_index = selected < 0 ? 0 : selected;
         for (const timezone_service::TimezoneInfo& tz : s_coordinator.timezones()) {
