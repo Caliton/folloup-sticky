@@ -1,5 +1,6 @@
 #include "time_page_coordinator.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstdlib>
@@ -57,11 +58,7 @@ void TimePageCoordinator::LoadFromSnapshot(const timezone_service::Snapshot& sna
     const int hour24 = std::atoi(time[0].c_str());
     minute_ = time[1].empty() ? std::string("00") : time[1];
     meridiem_pm_ = hour24 >= 12;
-    int hour12 = hour24 % 12;
-    if (hour12 == 0) {
-        hour12 = 12;
-    }
-    hour_ = Pad2(hour12);
+    hour_ = Pad2(hour24);
 }
 
 void TimePageCoordinator::RefreshFromService(
@@ -177,11 +174,7 @@ timezone_service::SettingsPatch TimePageCoordinator::BuildSettingsPatch() const
     patch.has_timezone_name = true;
     patch.timezone_name = timezone_name_;
 
-    int hour12 = std::atoi(hour_.c_str());
-    int hour24 = hour12 % 12;
-    if (meridiem_pm_) {
-        hour24 += 12;
-    }
+    const int hour24 = std::clamp(std::atoi(hour_.c_str()), 0, 23);
     patch.has_manual_datetime = true;
     patch.manual_date = year_ + "-" + month_ + "-" + day_;
     patch.manual_time = Pad2(hour24) + ":" + (minute_.empty() ? std::string("00") : minute_);

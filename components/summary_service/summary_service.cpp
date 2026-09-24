@@ -267,7 +267,12 @@ size_t FindSplitOffset(const std::string& text)
             return split;
         }
     }
-    return midpoint;
+    // No separator at all: never cut inside a UTF-8 multi-byte sequence.
+    size_t split = midpoint;
+    while (split > 0U && (static_cast<unsigned char>(text[split]) & 0xC0U) == 0x80U) {
+        --split;
+    }
+    return split > 0U ? split : midpoint;
 }
 
 bool SplitEntryToFitTokenBudget(SummaryKind kind, const SourceEntry& entry, size_t token_budget,

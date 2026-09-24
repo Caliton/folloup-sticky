@@ -255,15 +255,17 @@ std::array<std::string_view, 4> WrapLines(std::string_view text, int max_width, 
 
         if (last_fit_end == line_start) {
             last_fit_end = text.size();
-            for (size_t split = line_start + 1; split <= text.size(); ++split) {
+            size_t previous = line_start;
+            for (size_t split = Utf8Next(text, line_start); split > previous;
+                 previous = split, split = Utf8Next(text, split)) {
                 if (MeasureText(kToastRole, text.substr(line_start, split - line_start)) >
                     max_width) {
-                    last_fit_end = split - 1;
+                    last_fit_end = previous;
                     break;
                 }
             }
             if (last_fit_end <= line_start) {
-                last_fit_end = std::min(text.size(), line_start + 1);
+                last_fit_end = Utf8Next(text, line_start);
             }
         }
 

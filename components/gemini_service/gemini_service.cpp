@@ -110,7 +110,11 @@ std::string TrimForLog(std::string value, size_t max_len = 96)
     if (max_len <= 3) {
         return value.substr(0, max_len);
     }
-    return value.substr(0, max_len - 3) + "...";
+    size_t cut = max_len - 3;
+    while (cut > 0 && (static_cast<unsigned char>(value[cut]) & 0xC0U) == 0x80U) {
+        --cut;
+    }
+    return value.substr(0, cut) + "...";
 }
 
 std::string ReadNvsString(nvs_handle_t handle, const char* key)

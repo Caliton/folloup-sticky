@@ -79,13 +79,17 @@ Layout BuildLayout(int portrait_width, int portrait_height, const TimePageState&
     const int column2_x = page_x + column + kColumnGap;
     const int column3_x = page_x + (2 * (column + kColumnGap));
 
-    layout.hour = TimeInputBounds(page_x, y, state.hour, FieldStyle(column));
-    layout.minute = TimeInputBounds(column2_x, y, state.minute, FieldStyle(column));
-    layout.meridiem = ButtonBounds(column3_x, y, state.meridiem, MeridiemStyle(column));
-    y = Bottom3(layout.hour, layout.minute, layout.meridiem) + kSectionGap;
+    // 24-hour clock: hour and minute share the row, and the AM/PM toggle is not laid out
+    // (an empty meridiem rect is skipped by hit-testing and drawing).
+    const int half = std::max(0, (page_width - kColumnGap) / 2);
+    layout.hour = TimeInputBounds(page_x, y, state.hour, FieldStyle(half));
+    layout.minute = TimeInputBounds(page_x + half + kColumnGap, y, state.minute, FieldStyle(half));
+    layout.meridiem = {};
+    y = std::max(layout.hour.bottom(), layout.minute.bottom()) + kSectionGap;
 
-    layout.month = TimeInputBounds(page_x, y, state.month, FieldStyle(column));
-    layout.day = TimeInputBounds(column2_x, y, state.day, FieldStyle(column));
+    // pt-BR date order: DD / MM / AAAA.
+    layout.day = TimeInputBounds(page_x, y, state.day, FieldStyle(column));
+    layout.month = TimeInputBounds(column2_x, y, state.month, FieldStyle(column));
     layout.year = TimeInputBounds(column3_x, y, state.year, FieldStyle(column));
     y = Bottom3(layout.month, layout.day, layout.year) + kSectionBlockGap;
 
@@ -222,9 +226,11 @@ void DrawTimePage(uint8_t* framebuffer,
                   layout.hour.x, layout.hour.y, state.hour, FieldStyle(layout.hour.width));
     DrawTimeInput(framebuffer, raw_width, raw_height, portrait_width, portrait_height,
                   layout.minute.x, layout.minute.y, state.minute, FieldStyle(layout.minute.width));
-    DrawButton(framebuffer, raw_width, raw_height, portrait_width, portrait_height,
-               layout.meridiem.x, layout.meridiem.y, state.meridiem,
-               MeridiemStyle(layout.meridiem.width));
+    if (!layout.meridiem.IsEmpty()) {
+        DrawButton(framebuffer, raw_width, raw_height, portrait_width, portrait_height,
+                   layout.meridiem.x, layout.meridiem.y, state.meridiem,
+                   MeridiemStyle(layout.meridiem.width));
+    }
 
     DrawTimeInput(framebuffer, raw_width, raw_height, portrait_width, portrait_height,
                   layout.month.x, layout.month.y, state.month, FieldStyle(layout.month.width));

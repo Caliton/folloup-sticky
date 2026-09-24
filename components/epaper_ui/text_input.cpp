@@ -1,4 +1,5 @@
 #include "epaper_ui/text_input.h"
+#include "epaper_ui/font_renderer.h"
 
 #include <algorithm>
 
@@ -33,22 +34,7 @@ std::string BuildDisplayText(const TextInputState& state)
 
 std::string FitText(std::string_view text, design::TypographyRole role, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return std::string(text);
-    }
-
-    size_t length = text.size();
-    while (length > 0) {
-        std::string_view candidate = text.substr(0, length);
-        if (MeasureText(role, candidate) <= max_width) {
-            return std::string(candidate);
-        }
-        --length;
-    }
-    return {};
+    return epaper_ui::FitText(role, text, max_width, /*ellipsis=*/false);
 }
 
 UiRect Inset(const UiRect& rect, int inset)

@@ -1,4 +1,5 @@
 #include "epaper_ui/timeline_list.h"
+#include "epaper_ui/font_renderer.h"
 
 #include <algorithm>
 #include <string>
@@ -121,23 +122,7 @@ UiRect MeasureLabelOuterBounds(int origin_x, int origin_y, const std::string& la
 
 std::string FitLabelText(design::TypographyRole role, const std::string& text, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return text;
-    }
-    constexpr const char* kEllipsis = "...";
-    if (MeasureText(role, kEllipsis) > max_width) {
-        return {};
-    }
-    for (size_t length = text.size(); length > 0; --length) {
-        const std::string candidate = text.substr(0, length) + kEllipsis;
-        if (MeasureText(role, candidate) <= max_width) {
-            return candidate;
-        }
-    }
-    return kEllipsis;
+    return epaper_ui::FitText(role, text, max_width);
 }
 
 std::string BuildStickyFooterText(const TimelineListState& state, int group_index, int item_count)

@@ -1,4 +1,5 @@
 #include "epaper_ui/select_item.h"
+#include "epaper_ui/font_renderer.h"
 
 #include <algorithm>
 #include <string>
@@ -11,27 +12,7 @@ namespace {
 
 std::string FitLabelText(const std::string& text, design::TypographyRole role, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return text;
-    }
-
-    constexpr const char* kEllipsis = "...";
-    if (MeasureText(role, kEllipsis) > max_width) {
-        return {};
-    }
-
-    size_t length = text.size();
-    while (length > 0) {
-        const std::string candidate = text.substr(0, length) + kEllipsis;
-        if (MeasureText(role, candidate) <= max_width) {
-            return candidate;
-        }
-        --length;
-    }
-    return kEllipsis;
+    return epaper_ui::FitText(role, text, max_width);
 }
 
 }  // namespace

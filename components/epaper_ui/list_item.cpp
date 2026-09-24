@@ -5,6 +5,7 @@
 
 #include "asset_types.h"
 #include "epaper_ui/layout_grid.h"
+#include "epaper_ui/font_renderer.h"
 #include "project_assets.h"
 #include "render_utils.h"
 
@@ -38,23 +39,7 @@ int ResolveWidth(int canvas_width, int origin_x, const ListItemStyle& style)
 // Truncate `text` with a trailing ellipsis so it fits `max_width`.
 std::string FitLabelText(design::TypographyRole role, const std::string& text, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return text;
-    }
-    constexpr const char* kEllipsis = "...";
-    if (MeasureText(role, kEllipsis) > max_width) {
-        return {};
-    }
-    for (size_t length = text.size(); length > 0; --length) {
-        const std::string candidate = text.substr(0, length) + kEllipsis;
-        if (MeasureText(role, candidate) <= max_width) {
-            return candidate;
-        }
-    }
-    return kEllipsis;
+    return epaper_ui::FitText(role, text, max_width);
 }
 
 // Header style resolved for this row: fixed content width, item selection, and outline flags.

@@ -9,6 +9,92 @@ namespace timeline_format {
 
 using recording_archive_service::RecordingTag;
 
+namespace {
+
+constexpr const char* kWeekdayShort[] = {"Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"};
+constexpr const char* kWeekdayLong[] = {"Domingo",      "Segunda-feira", "Terça-feira",
+                                        "Quarta-feira", "Quinta-feira",  "Sexta-feira",
+                                        "Sábado"};
+constexpr const char* kMonthShort[] = {"jan", "fev", "mar", "abr", "mai", "jun",
+                                       "jul", "ago", "set", "out", "nov", "dez"};
+constexpr const char* kMonthLong[] = {"janeiro", "fevereiro", "março",    "abril",
+                                      "maio",    "junho",     "julho",    "agosto",
+                                      "setembro", "outubro",  "novembro", "dezembro"};
+
+template <size_t N>
+const char* Pick(const char* const (&names)[N], int index)
+{
+    return (index >= 0 && static_cast<size_t>(index) < N) ? names[index] : "";
+}
+
+// "YYYY-MM-DD" for the local day `offset_days` from now; empty when the clock is unset.
+std::string LocalDayKey(int offset_days)
+{
+    const std::string today = timezone_service::GetSnapshot().runtime.current_date;
+    if (offset_days == 0 || today.empty()) {
+        return offset_days == 0 ? today : std::string{};
+    }
+    int year = 0;
+    int month = 0;
+    int day = 0;
+    if (std::sscanf(today.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
+        return {};
+    }
+    std::tm tm = {};
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day + offset_days;
+    tm.tm_hour = 12;  // midday keeps DST transitions from shifting the day
+    if (std::mktime(&tm) == static_cast<std::time_t>(-1)) {
+        return {};
+    }
+    char buffer[40] = {};  // sized for any int, which -Wformat-truncation assumes
+    std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1,
+                  tm.tm_mday);
+    return buffer;
+}
+
+}  // namespace
+
+const char* WeekdayShort(int tm_wday)
+{
+    return Pick(kWeekdayShort, tm_wday);
+}
+
+const char* WeekdayLong(int tm_wday)
+{
+    return Pick(kWeekdayLong, tm_wday);
+}
+
+const char* MonthShort(int tm_mon)
+{
+    return Pick(kMonthShort, tm_mon);
+}
+
+const char* MonthLong(int tm_mon)
+{
+    return Pick(kMonthLong, tm_mon);
+}
+
+std::string FormatShortDate(const std::tm& local)
+{
+    return std::string(WeekdayShort(local.tm_wday)) + ", " + std::to_string(local.tm_mday) + " " +
+           MonthShort(local.tm_mon);
+}
+
+std::string FormatLongDate(const std::tm& local)
+{
+    return std::to_string(local.tm_mday) + " de " + MonthLong(local.tm_mon) + " de " +
+           std::to_string(local.tm_year + 1900);
+}
+
+std::string FormatClock(const std::tm& local)
+{
+    char buffer[24] = {};
+    std::snprintf(buffer, sizeof(buffer), "%02d:%02d", local.tm_hour, local.tm_min);
+    return buffer;
+}
+
 std::string DateKey(const std::string& created_local_date)
 {
     const auto space = created_local_date.find(' ');
@@ -18,12 +104,16 @@ std::string DateKey(const std::string& created_local_date)
 std::string FormatDateLabel(const std::string& created_local_date)
 {
     const std::string day_key = DateKey(created_local_date);
+    if (day_key.empty()) {
+        return "Hoje";
+    }
 
-    // "Today" only while the recording's day equals the current local date. GetSnapshot().current_date
-    // is the live "YYYY-MM-DD", so this stops reading "Today" as soon as the date rolls over.
-    if (!day_key.empty() &&
-        day_key == timezone_service::GetSnapshot().runtime.current_date) {
-        return "Today";
+    // GetSnapshot().current_date is the live "YYYY-MM-DD", so these relabel at midnight.
+    if (day_key == LocalDayKey(0)) {
+        return "Hoje";
+    }
+    if (day_key == LocalDayKey(-1)) {
+        return "Ontem";
     }
 
     int year = 0;
@@ -34,17 +124,12 @@ std::string FormatDateLabel(const std::string& created_local_date)
         tm.tm_year = year - 1900;
         tm.tm_mon = month - 1;
         tm.tm_mday = day;
-        std::time_t stamp = std::mktime(&tm);
-        if (stamp != static_cast<std::time_t>(-1)) {
-            std::tm local = {};
-            localtime_r(&stamp, &local);
-            char buffer[24] = {};
-            if (std::strftime(buffer, sizeof(buffer), "%a %b %d", &local) > 0) {
-                return buffer;
-            }
+        tm.tm_hour = 12;
+        if (std::mktime(&tm) != static_cast<std::time_t>(-1)) {
+            return FormatShortDate(tm);
         }
     }
-    return created_local_date.empty() ? "Today" : created_local_date;
+    return created_local_date;
 }
 
 std::string FormatTimeLabel(bool time_valid, int64_t created_unix_seconds)
@@ -53,14 +138,7 @@ std::string FormatTimeLabel(bool time_valid, int64_t created_unix_seconds)
         std::time_t stamp = static_cast<std::time_t>(created_unix_seconds);
         std::tm local = {};
         localtime_r(&stamp, &local);
-        char buffer[16] = {};
-        if (std::strftime(buffer, sizeof(buffer), "%I:%M %p", &local) > 0) {
-            std::string text = buffer;
-            if (text.size() > 1 && text.front() == '0') {
-                text.erase(0, 1);
-            }
-            return text;
-        }
+        return FormatClock(local);
     }
     return "--:--";
 }
@@ -71,7 +149,7 @@ std::string FormatDurationLabel(uint32_t duration_ms)
     if (seconds < 60U) {
         return std::to_string(seconds) + "s";
     }
-    return std::to_string(seconds / 60U) + "m";
+    return std::to_string(seconds / 60U) + "min";
 }
 
 std::string TrimTranscript(const std::string& text)
@@ -88,12 +166,12 @@ std::string TagText(RecordingTag tag)
 {
     switch (tag) {
         case RecordingTag::kTask:
-            return "Task";
+            return "Tarefa";
         case RecordingTag::kIdea:
-            return "Idea";
+            return "Ideia";
         case RecordingTag::kNote:
         default:
-            return "Note";
+            return "Nota";
     }
 }
 

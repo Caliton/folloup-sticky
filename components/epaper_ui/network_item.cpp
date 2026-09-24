@@ -1,4 +1,5 @@
 #include "epaper_ui/network_item.h"
+#include "epaper_ui/font_renderer.h"
 
 #include <algorithm>
 #include <array>
@@ -11,27 +12,7 @@ namespace {
 
 std::string FitLabelText(std::string_view text, design::TypographyRole role, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return std::string(text);
-    }
-
-    constexpr std::string_view kEllipsis = "...";
-    if (MeasureText(role, kEllipsis) > max_width) {
-        return {};
-    }
-
-    size_t length = text.size();
-    while (length > 0) {
-        std::string candidate = std::string(text.substr(0, length)) + std::string(kEllipsis);
-        if (MeasureText(role, candidate) <= max_width) {
-            return candidate;
-        }
-        --length;
-    }
-    return std::string(kEllipsis);
+    return epaper_ui::FitText(role, text, max_width);
 }
 
 const EmbeddedImageAsset* ResolveWifiAsset(NetworkSignalStrength strength)

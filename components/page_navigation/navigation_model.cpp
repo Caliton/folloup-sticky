@@ -118,12 +118,11 @@ NavigationModel BuildTimePageNavigationModel()
     AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageHour, 1);
     AddItem(model, NavigationItemSection::kTimePageControls,
             NavigationItemRole::kTimePageMinute, 2);
-    AddItem(model, NavigationItemSection::kTimePageControls,
-            NavigationItemRole::kTimePageMeridiem, 3);
+    // 24-hour clock: no AM/PM toggle. Date fields follow pt-BR order (day, month, year).
+    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageDay, 3);
     AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageMonth, 4);
-    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageDay, 5);
-    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageYear, 6);
-    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageSave, 7);
+    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageYear, 5);
+    AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageSave, 6);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);

@@ -98,6 +98,62 @@ int MeasureText(design::TypographyRole role, std::string_view text)
                        selection);
 }
 
+size_t Utf8Boundary(std::string_view text, size_t pos)
+{
+    pos = std::min(pos, text.size());
+    while (pos > 0 && pos < text.size() &&
+           (static_cast<unsigned char>(text[pos]) & 0xC0U) == 0x80U) {
+        --pos;
+    }
+    return pos;
+}
+
+size_t Utf8Next(std::string_view text, size_t pos)
+{
+    if (pos >= text.size()) {
+        return text.size();
+    }
+    ++pos;
+    while (pos < text.size() && (static_cast<unsigned char>(text[pos]) & 0xC0U) == 0x80U) {
+        ++pos;
+    }
+    return pos;
+}
+
+std::string FitText(design::TypographyRole role,
+                    std::string_view text,
+                    int max_width,
+                    bool ellipsis)
+{
+    if (text.empty() || max_width <= 0) {
+        return {};
+    }
+    if (MeasureText(role, text) <= max_width) {
+        return std::string(text);
+    }
+
+    constexpr std::string_view kEllipsis = "...";
+    const std::string_view suffix = ellipsis ? kEllipsis : std::string_view{};
+    if (!suffix.empty() && MeasureText(role, suffix) > max_width) {
+        return {};
+    }
+
+    size_t length = Utf8Boundary(text, text.size() - 1);
+    while (length > 0) {
+        std::string candidate(text.substr(0, length));
+        // Don't leave a dangling space before the ellipsis.
+        while (!candidate.empty() && candidate.back() == ' ') {
+            candidate.pop_back();
+        }
+        candidate.append(suffix);
+        if (MeasureText(role, candidate) <= max_width) {
+            return candidate;
+        }
+        length = Utf8Boundary(text, length - 1);
+    }
+    return std::string(suffix);
+}
+
 int LineHeight(design::TypographyRole role)
 {
     const FontSelection selection = FontForRole(role);

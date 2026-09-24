@@ -5,6 +5,7 @@
 #include <ctime>
 
 #include "project_assets.h"
+#include "timeline_format.h"
 
 namespace {
 
@@ -36,57 +37,28 @@ std::string FormatDateLabel(const RecordingMetadata& metadata)
         tm.tm_year = year - 1900;
         tm.tm_mon = month - 1;
         tm.tm_mday = day;
-        std::time_t stamp = std::mktime(&tm);
-        if (stamp != static_cast<std::time_t>(-1)) {
-            std::tm local = {};
-            localtime_r(&stamp, &local);
-            char buffer[24] = {};
-            if (std::strftime(buffer, sizeof(buffer), "%a %b %d", &local) > 0) {
-                return buffer;
-            }
+        tm.tm_hour = 12;
+        if (std::mktime(&tm) != static_cast<std::time_t>(-1)) {
+            return timeline_format::FormatShortDate(tm);
         }
     }
-    return metadata.created_local_date.empty() ? "Details" : metadata.created_local_date;
+    return metadata.created_local_date.empty() ? "Detalhes" : metadata.created_local_date;
 }
 
 std::string FormatTimeLabel(const RecordingEntry& entry)
 {
-    if (entry.metadata.time_valid && entry.metadata.created_unix_seconds > 0) {
-        std::time_t stamp = static_cast<std::time_t>(entry.metadata.created_unix_seconds);
-        std::tm local = {};
-        localtime_r(&stamp, &local);
-        char buffer[16] = {};
-        if (std::strftime(buffer, sizeof(buffer), "%I:%M %p", &local) > 0) {
-            std::string text = buffer;
-            if (text.size() > 1 && text.front() == '0') {
-                text.erase(0, 1);
-            }
-            return text;
-        }
-    }
-    return "--:--";
+    return timeline_format::FormatTimeLabel(entry.metadata.time_valid,
+                                            entry.metadata.created_unix_seconds);
 }
 
 std::string FormatDurationLabel(uint32_t duration_ms)
 {
-    const uint32_t seconds = duration_ms / 1000U;
-    if (seconds < 60U) {
-        return std::to_string(seconds) + "s";
-    }
-    return std::to_string(seconds / 60U) + "m";
+    return timeline_format::FormatDurationLabel(duration_ms);
 }
 
 std::string TagText(RecordingTag tag)
 {
-    switch (tag) {
-        case RecordingTag::kTask:
-            return "Task";
-        case RecordingTag::kIdea:
-            return "Idea";
-        case RecordingTag::kNote:
-        default:
-            return "Note";
-    }
+    return timeline_format::TagText(tag);
 }
 
 }  // namespace

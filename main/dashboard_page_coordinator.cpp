@@ -7,6 +7,7 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "sdkconfig.h"
+#include "timeline_format.h"
 
 namespace {
 
@@ -50,12 +51,8 @@ void FillCurrentDate(epaper_ui::CurrentDateState* date)
     std::tm local_tm = {};
     localtime_r(&now, &local_tm);
 
-    char weekday[16] = {};
-    char date_text[24] = {};
-    std::strftime(weekday, sizeof(weekday), "%A", &local_tm);
-    std::strftime(date_text, sizeof(date_text), "%b %d, %Y", &local_tm);
-    date->weekday_text = weekday;
-    date->date_text = date_text;
+    date->weekday_text = timeline_format::WeekdayLong(local_tm.tm_wday);
+    date->date_text = timeline_format::FormatLongDate(local_tm);
 }
 
 }  // namespace

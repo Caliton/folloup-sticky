@@ -38,6 +38,7 @@ constexpr const char* kNtpSyncedKey = "ntp_sync";
 constexpr const char* kNtpEpochKey = "ntp_epoch";
 constexpr const char* kDefaultNtpServer = "pool.ntp.org";
 constexpr const char* kChinaNtpServer = "cn.pool.ntp.org";
+constexpr const char* kBrazilNtpServer = "pool.ntp.br";
 constexpr time_t kMinValidEpoch = 1600000000;
 constexpr size_t kMaxPortalPayloadLen = 512;
 constexpr uint32_t kSyncTaskStackWords = 6144;
@@ -61,25 +62,51 @@ struct SyncRequest {
     bool force = false;
 };
 
+// Brazil has had no daylight saving time since 2019. POSIX offsets are sign-inverted.
 constexpr TimezoneCatalogEntry kTimezones[] = {
-    {"North_America_Eastern", "EST5EDT,M3.2.0,M11.1.0", "Eastern Time"},
-    {"North_America_Central", "CST6CDT,M3.2.0,M11.1.0", "Central Time"},
-    {"North_America_Mountain", "MST7MDT,M3.2.0,M11.1.0", "Mountain Time"},
-    {"North_America_Pacific", "PST8PDT,M3.2.0,M11.1.0", "Pacific Time"},
-    {"North_America_Alaska", "AKST9AKDT,M3.2.0,M11.1.0", "Alaska Time"},
-    {"North_America_Hawaii", "HST10", "Hawaii Time"},
+    {"America_Sao_Paulo", "<-03>3", "Brasília (BRT)"},
+    {"America_Manaus", "<-04>4", "Amazonas (AMT)"},
+    {"America_Rio_Branco", "<-05>5", "Acre"},
+    {"America_Noronha", "<-02>2", "Fernando de Noronha"},
+    {"North_America_Eastern", "EST5EDT,M3.2.0,M11.1.0", "EUA - Leste"},
+    {"North_America_Central", "CST6CDT,M3.2.0,M11.1.0", "EUA - Central"},
+    {"North_America_Mountain", "MST7MDT,M3.2.0,M11.1.0", "EUA - Montanhas"},
+    {"North_America_Pacific", "PST8PDT,M3.2.0,M11.1.0", "EUA - Pacífico"},
+    {"North_America_Alaska", "AKST9AKDT,M3.2.0,M11.1.0", "Alasca"},
+    {"North_America_Hawaii", "HST10", "Havaí"},
     {"UTC", "UTC0", "UTC"},
-    {"UK", "GMT0BST,M3.5.0,M10.5.0", "United Kingdom"},
-    {"Central_Europe", "CET-1CEST,M3.5.0,M10.5.0", "Central Europe"},
-    {"Eastern_Europe", "EET-2EEST,M3.5.0,M10.5.0", "Eastern Europe"},
-    {"Japan", "JST-9", "Japan"},
+    {"UK", "GMT0BST,M3.5.0,M10.5.0", "Reino Unido / Portugal"},
+    {"Central_Europe", "CET-1CEST,M3.5.0,M10.5.0", "Europa Central"},
+    {"Eastern_Europe", "EET-2EEST,M3.5.0,M10.5.0", "Europa Oriental"},
+    {"Japan", "JST-9", "Japão"},
     {"China", "CST-8", "China"},
-    {"Australia_Eastern", "AEST-10AEDT,M10.1.0,M4.1.0", "Australia Eastern"},
-    {"Australia_Central", "ACST-9:30ACDT,M10.1.0,M4.1.0", "Australia Central"},
-    {"Australia_Western", "AWST-8", "Australia Western"},
+    {"Australia_Eastern", "AEST-10AEDT,M10.1.0,M4.1.0", "Austrália - Leste"},
+    {"Australia_Central", "ACST-9:30ACDT,M10.1.0,M4.1.0", "Austrália - Central"},
+    {"Australia_Western", "AWST-8", "Austrália - Oeste"},
 };
 
 constexpr TimezoneAliasEntry kTimezoneAliases[] = {
+    {"America/Sao_Paulo", "America_Sao_Paulo"},
+    {"America/Bahia", "America_Sao_Paulo"},
+    {"America/Fortaleza", "America_Sao_Paulo"},
+    {"America/Recife", "America_Sao_Paulo"},
+    {"America/Belem", "America_Sao_Paulo"},
+    {"America/Maceio", "America_Sao_Paulo"},
+    {"America/Araguaina", "America_Sao_Paulo"},
+    {"America/Santarem", "America_Sao_Paulo"},
+    {"Brazil/East", "America_Sao_Paulo"},
+    {"America/Manaus", "America_Manaus"},
+    {"America/Porto_Velho", "America_Manaus"},
+    {"America/Boa_Vista", "America_Manaus"},
+    {"America/Cuiaba", "America_Manaus"},
+    {"America/Campo_Grande", "America_Manaus"},
+    {"Brazil/West", "America_Manaus"},
+    {"America/Rio_Branco", "America_Rio_Branco"},
+    {"America/Eirunepe", "America_Rio_Branco"},
+    {"Brazil/Acre", "America_Rio_Branco"},
+    {"America/Noronha", "America_Noronha"},
+    {"Brazil/DeNoronha", "America_Noronha"},
+    {"Europe/Lisbon", "UK"},
     {"America/New_York", "North_America_Eastern"},
     {"America/Detroit", "North_America_Eastern"},
     {"America/Toronto", "North_America_Eastern"},
@@ -207,6 +234,12 @@ const char* PickDefaultNtpServer(const char* timezone_tz)
 {
     if (timezone_tz != nullptr && std::strstr(timezone_tz, "CST-8") != nullptr) {
         return kChinaNtpServer;
+    }
+    // Brazilian zones (see kTimezones): NTP.br is closer and run by NIC.br.
+    if (timezone_tz != nullptr &&
+        (std::strcmp(timezone_tz, "<-03>3") == 0 || std::strcmp(timezone_tz, "<-04>4") == 0 ||
+         std::strcmp(timezone_tz, "<-05>5") == 0 || std::strcmp(timezone_tz, "<-02>2") == 0)) {
+        return kBrazilNtpServer;
     }
     return kDefaultNtpServer;
 }

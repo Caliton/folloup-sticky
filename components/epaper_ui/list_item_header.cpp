@@ -1,4 +1,5 @@
 #include "epaper_ui/list_item_header.h"
+#include "epaper_ui/font_renderer.h"
 
 #include <algorithm>
 #include <string>
@@ -27,23 +28,7 @@ int ResolveHeight(const ListItemHeaderStyle& style)
 // the ellipsis will not fit.
 std::string FitLabelText(design::TypographyRole role, const std::string& text, int max_width)
 {
-    if (text.empty() || max_width <= 0) {
-        return {};
-    }
-    if (MeasureText(role, text) <= max_width) {
-        return text;
-    }
-    constexpr const char* kEllipsis = "...";
-    if (MeasureText(role, kEllipsis) > max_width) {
-        return {};
-    }
-    for (size_t length = text.size(); length > 0; --length) {
-        const std::string candidate = text.substr(0, length) + kEllipsis;
-        if (MeasureText(role, candidate) <= max_width) {
-            return candidate;
-        }
-    }
-    return kEllipsis;
+    return epaper_ui::FitText(role, text, max_width);
 }
 
 // Invoke `fn(dx, dy)` for every stroke offset in the (2t+1)^2 neighborhood except the center,

@@ -37,7 +37,7 @@ menu "Folloup Settings"
 
     config FOLLOWUP_DEFAULT_TIMEZONE_NAME
         string "Default timezone name"
-        default "North_America_Eastern"
+        default "America_Sao_Paulo"
         help
             Default timezone catalog entry used before a runtime timezone
             setting has been saved in NVS.

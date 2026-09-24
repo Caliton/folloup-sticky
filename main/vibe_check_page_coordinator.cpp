@@ -6,6 +6,7 @@
 
 #include "esp_random.h"
 #include "generated_epaper_icons.h"
+#include "timeline_format.h"
 
 namespace {
 
@@ -19,76 +20,25 @@ constexpr const char* kMessageText =
 constexpr const char* kEmptyStateMessage = "Get the ball rolling! Capture some ideas!";
 constexpr const char* kAudioOnlyMessage = "Audio only note...";
 
-// "Mon Jan 3" from the stored YYYY-MM-DD; falls back to the raw date or "Today".
 std::string FormatArchiveDateLabel(const RecordingMetadata& metadata)
 {
-    if (metadata.created_local_date.empty()) {
-        return "Today";
-    }
-    int year = 0;
-    int month = 0;
-    int day = 0;
-    if (std::sscanf(metadata.created_local_date.c_str(), "%d-%d-%d", &year, &month, &day) == 3) {
-        std::tm local_tm = {};
-        local_tm.tm_year = year - 1900;
-        local_tm.tm_mon = month - 1;
-        local_tm.tm_mday = day;
-        if (std::mktime(&local_tm) != static_cast<time_t>(-1)) {
-            char weekday_buffer[8] = {};
-            char month_buffer[8] = {};
-            if (std::strftime(weekday_buffer, sizeof(weekday_buffer), "%a", &local_tm) > 0 &&
-                std::strftime(month_buffer, sizeof(month_buffer), "%b", &local_tm) > 0) {
-                char label_buffer[24] = {};
-                std::snprintf(label_buffer, sizeof(label_buffer), "%s %s %d", weekday_buffer,
-                              month_buffer, day);
-                return label_buffer;
-            }
-        }
-    }
-    return metadata.created_local_date;
+    return timeline_format::FormatDateLabel(metadata.created_local_date);
 }
 
 std::string FormatArchiveTimeLabel(const RecordingEntry& entry)
 {
-    if (entry.metadata.time_valid && entry.metadata.created_unix_seconds > 0) {
-        time_t epoch_seconds = static_cast<time_t>(entry.metadata.created_unix_seconds);
-        std::tm local_tm = {};
-        localtime_r(&epoch_seconds, &local_tm);
-        char buffer[16] = {};
-        if (std::strftime(buffer, sizeof(buffer), "%I:%M %p", &local_tm) > 0) {
-            if (buffer[0] == '0') {
-                return std::string(buffer + 1);
-            }
-            return buffer;
-        }
-    }
-    return "--:--";
+    return timeline_format::FormatTimeLabel(entry.metadata.time_valid,
+                                            entry.metadata.created_unix_seconds);
 }
 
 std::string FormatArchiveDurationLabel(uint32_t duration_ms)
 {
-    const uint32_t total_seconds = duration_ms / 1000U;
-    char buffer[16] = {};
-    if (total_seconds <= 60U) {
-        std::snprintf(buffer, sizeof(buffer), "%02us", static_cast<unsigned>(total_seconds));
-        return buffer;
-    }
-    const uint32_t minutes = total_seconds / 60U;
-    std::snprintf(buffer, sizeof(buffer), "%um", static_cast<unsigned>(minutes));
-    return buffer;
+    return timeline_format::FormatDurationLabel(duration_ms);
 }
 
 std::string TagTextForRecording(const RecordingMetadata& metadata)
 {
-    switch (metadata.tag) {
-        case RecordingTag::kIdea:
-            return "Idea";
-        case RecordingTag::kTask:
-            return "Task";
-        case RecordingTag::kNote:
-        default:
-            return "Note";
-    }
+    return timeline_format::TagText(metadata.tag);
 }
 
 std::string TrimTranscriptText(const std::string& text)

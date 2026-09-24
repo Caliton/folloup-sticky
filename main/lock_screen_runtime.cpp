@@ -13,6 +13,7 @@
 #include "esp_timer.h"
 #include "status_bar_runtime.h"
 #include "ui_refresh_runtime.h"
+#include "timeline_format.h"
 
 namespace lock_screen_runtime {
 namespace {
@@ -37,12 +38,6 @@ uint32_t BuildMinuteKey(time_t now)
     return static_cast<uint32_t>(now / 60);
 }
 
-int FormatHour12(int hour24)
-{
-    const int hour12 = hour24 % 12;
-    return hour12 == 0 ? 12 : hour12;
-}
-
 bool RebuildClockStateLocked(bool force)
 {
     const time_t now = time(nullptr);
@@ -61,20 +56,14 @@ bool RebuildClockStateLocked(bool force)
         // buffers into a format-truncation error.
         char hour_text[12] = {};
         char minute_text[12] = {};
-        char weekday_text[16] = {};
-        char month_text[8] = {};
 
-        std::snprintf(hour_text, sizeof(hour_text), "%02d", FormatHour12(local_tm.tm_hour));
+        std::snprintf(hour_text, sizeof(hour_text), "%02d", local_tm.tm_hour);
         std::snprintf(minute_text, sizeof(minute_text), "%02d", local_tm.tm_min);
-        strftime(weekday_text, sizeof(weekday_text), "%A", &local_tm);
-        strftime(month_text, sizeof(month_text), "%b", &local_tm);
 
         next.hour_text = hour_text;
         next.minute_text = minute_text;
-        next.weekday_text = weekday_text;
-        next.date_text =
-            std::string(month_text) + " " + std::to_string(local_tm.tm_mday) + ", " +
-            std::to_string(local_tm.tm_year + 1900);
+        next.weekday_text = timeline_format::WeekdayLong(local_tm.tm_wday);
+        next.date_text = timeline_format::FormatLongDate(local_tm);
     }
 
     const bool changed = force || next.hour_text != s_state.hour_text ||
