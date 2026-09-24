@@ -119,14 +119,14 @@ export class DurationInput extends HTMLElement {
     this.minutesInput.disabled = this.disabled;
 
     this.syncField(this.hoursInput, {
-      ariaLabel: label ? `${label} hours` : "Hours",
+      ariaLabel: label ? `${label} (horas)` : "Horas",
       max: attributeOrDefault(this, "hours-max", "23"),
       min: attributeOrDefault(this, "hours-min", "0"),
       step: attributeOrDefault(this, "hours-step", "1"),
-      suffix: attributeOrDefault(this, "hours-suffix", "hr"),
+      suffix: attributeOrDefault(this, "hours-suffix", "h"),
     });
     this.syncField(this.minutesInput, {
-      ariaLabel: label ? `${label} minutes` : "Minutes",
+      ariaLabel: label ? `${label} (minutos)` : "Minutos",
       max: attributeOrDefault(this, "minutes-max", "59"),
       min: attributeOrDefault(this, "minutes-min", "0"),
       step: attributeOrDefault(this, "minutes-step", "1"),

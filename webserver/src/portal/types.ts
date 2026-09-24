@@ -1,7 +1,7 @@
 export interface Network {
   ssid: string;
   rssi: number;
-  signal_strength: string;
+  signal_strength?: string;
   encryption_type: number;
   is_open: boolean;
   security: string;

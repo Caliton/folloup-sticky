@@ -50,16 +50,16 @@ export function updatePortalUiState(deps: UpdatePortalUiStateDeps) {
   dom.wifiStatusCard.actionDisabled = wifiBusy;
   dom.passwordInput.disabled = controllers.wifiController.isConnecting();
   if (controllers.wifiController.isConnecting()) {
-    dom.connectBtn.textContent = 'Connecting...';
-    dom.wifiStatusCard.actionLabel = 'Connecting...';
+    dom.connectBtn.textContent = 'Conectando...';
+    dom.wifiStatusCard.actionLabel = 'Conectando...';
   } else if (isSelectedConnected) {
-    dom.connectBtn.textContent = 'Disconnect';
-    dom.wifiStatusCard.actionLabel = 'Disconnect';
+    dom.connectBtn.textContent = 'Desconectar';
+    dom.wifiStatusCard.actionLabel = 'Desconectar';
   } else {
-    dom.connectBtn.textContent = 'Connect';
+    dom.connectBtn.textContent = 'Conectar';
     dom.wifiStatusCard.actionLabel = controllers.wifiController.isCurrentlyConnected()
-      ? 'Disconnect'
-      : 'Connect';
+      ? 'Desconectar'
+      : 'Conectar';
   }
 
   // --- Time / timezone ---

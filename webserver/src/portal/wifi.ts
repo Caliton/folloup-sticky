@@ -41,6 +41,13 @@ interface WiFiControllerDeps {
   wifiStatusCard: NetworkStatusField;
 }
 
+function getSignalLabel(rssi: number): string {
+  if (rssi >= -60) return 'Excelente';
+  if (rssi >= -70) return 'Bom';
+  if (rssi >= -80) return 'Fraco';
+  return 'Muito fraco';
+}
+
 function getSignalIcon(
   rssi: number,
   signalIcons: WiFiControllerDeps['signalIcons']
@@ -63,7 +70,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
 
   function updateWifiStatusCard() {
     deps.wifiStatusCard.hidden = false;
-    deps.wifiStatusCard.statusLabel = isCurrentlyConnected ? 'Connected' : 'Disconnected';
+    deps.wifiStatusCard.statusLabel = isCurrentlyConnected ? 'Conectado' : 'Desconectado';
     deps.wifiStatusCard.network = isCurrentlyConnected ? connectedNetwork : '';
   }
 
@@ -71,7 +78,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     const emptyItem = document.createElement('li');
     emptyItem.className = 'networks__list-empty-state';
     emptyItem.innerHTML =
-      `${deps.svgWithClass(deps.wifiFindIcon, 'wifi-find-icon')}<p>Scan for available networks</p>`;
+      `${deps.svgWithClass(deps.wifiFindIcon, 'wifi-find-icon')}<p>Busque as redes disponíveis</p>`;
     deps.networkList.setEmptyState(emptyItem);
   }
 
@@ -149,20 +156,20 @@ export function createWiFiController(deps: WiFiControllerDeps) {
 
       if (connectedNetwork === network.ssid && isCurrentlyConnected) {
         const connectedSpan = document.createElement('span');
-        connectedSpan.title = 'Currently connected';
+        connectedSpan.title = 'Conectado agora';
         connectedSpan.innerHTML = deps.svgWithClass(deps.checkIcon, 'wifi-connected-icon');
         details.appendChild(connectedSpan);
       }
 
       const securitySpan = document.createElement('span');
-      securitySpan.title = network.is_open ? 'Open' : 'Secured';
+      securitySpan.title = network.is_open ? 'Aberta' : 'Protegida';
       if (!network.is_open) {
         securitySpan.innerHTML = deps.svgWithClass(deps.securityIcon, 'wifi-security-icon');
       }
       details.appendChild(securitySpan);
 
       const signalSpan = document.createElement('span');
-      signalSpan.title = `Signal strength: ${network.signal_strength} (${network.rssi} dBm)`;
+      signalSpan.title = `Sinal: ${getSignalLabel(network.rssi)} (${network.rssi} dBm)`;
       signalSpan.innerHTML = deps.svgWithClass(
         getSignalIcon(network.rssi, deps.signalIcons),
         'wifi-signal-icon'
@@ -207,11 +214,11 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     }
 
     isScanning = true;
-    deps.notify('Scanning for networks...', 'info');
+    deps.notify('Buscando redes...', 'info');
     deps.onStateChange();
 
     try {
-      let lastMessage = 'Scanning for networks...';
+      let lastMessage = 'Buscando redes...';
 
       for (let attempt = 0; attempt < deps.scanPollAttempts; attempt++) {
         const data = await deps.fetchPortalJson('/api/scan');
@@ -225,17 +232,17 @@ export function createWiFiController(deps: WiFiControllerDeps) {
           }
         } else {
           networks = Array.isArray(data.networks) ? data.networks : [];
-          deps.notify(lastMessage || 'Scan complete.', 'success');
+          deps.notify(lastMessage || 'Busca concluída.', 'success');
           renderNetworkList();
           return;
         }
       }
 
-      throw new Error('Network scan timed out. Please try again.');
+      throw new Error('A busca de redes demorou demais. Tente novamente.');
     } catch (error) {
       console.error('Scan failed:', error);
       deps.notify(
-        error instanceof Error ? error.message : 'Scan failed. Please try again.',
+        error instanceof Error ? error.message : 'Falha na busca de redes. Tente novamente.',
         'error'
       );
       networks = [];
@@ -258,12 +265,12 @@ export function createWiFiController(deps: WiFiControllerDeps) {
       const data = await deps.fetchPortalJson('/api/status');
       applyPortalStatus(data);
       if (!isScanning) {
-        deps.notify(data.message || 'Status updated.', data.connected ? 'success' : 'info');
+        deps.notify(data.message || 'Status atualizado.', data.connected ? 'success' : 'info');
       }
     } catch (error) {
       console.error('Status check failed:', error);
       deps.notify(
-        error instanceof Error ? error.message : 'Status check failed.',
+        error instanceof Error ? error.message : 'Falha ao verificar o status.',
         'error'
       );
     } finally {
@@ -278,14 +285,14 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     }
 
     if (requiresPassword() && deps.passwordInput.value.trim().length === 0) {
-      deps.setFieldError(deps.passwordInput, 'Please enter a WiFi password.');
+      deps.setFieldError(deps.passwordInput, 'Digite a senha do Wi-Fi.');
       deps.passwordInput.focus({ preventScroll: true });
       return;
     }
     deps.clearFieldError(deps.passwordInput);
 
     isConnecting = true;
-    deps.notify(`Connecting to ${selectedNetwork}...`, 'info');
+    deps.notify(`Conectando a ${selectedNetwork}...`, 'info');
     deps.onStateChange();
 
     try {
@@ -297,7 +304,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
         }),
       });
 
-      deps.notify(data.message || 'Connection request sent.', 'info');
+      deps.notify(data.message || 'Solicitação de conexão enviada.', 'info');
 
       for (let attempt = 0; attempt < deps.statusPollAttempts; attempt++) {
         await deps.delayMs(deps.statusPollIntervalMs);
@@ -306,18 +313,18 @@ export function createWiFiController(deps: WiFiControllerDeps) {
         applyPortalStatus(statusData);
 
         if (statusData.connected) {
-          deps.notify(statusData.message || 'Connected.', 'success');
+          deps.notify(statusData.message || 'Conectado.', 'success');
           break;
         }
       }
 
       if (!isCurrentlyConnected) {
-        deps.notify('Connection in progress...', 'info');
+        deps.notify('Conexão em andamento...', 'info');
       }
     } catch (error) {
       console.error('Connection failed:', error);
       deps.notify(
-        error instanceof Error ? error.message : 'Connection failed.',
+        error instanceof Error ? error.message : 'Falha na conexão.',
         'error'
       );
     } finally {
@@ -332,7 +339,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     }
 
     isCheckingStatus = true;
-    deps.notify('Disconnecting...', 'info');
+    deps.notify('Desconectando...', 'info');
     deps.onStateChange();
 
     try {
@@ -344,7 +351,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
       connectedNetwork = '';
       updateWifiStatusCard();
       renderNetworkList();
-      deps.notify(data.message || 'Disconnected.', 'success');
+      deps.notify(data.message || 'Desconectado.', 'success');
       deps.onConnectionStateChange?.({
         wasConnected,
         previousNetwork,
@@ -354,7 +361,7 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     } catch (error) {
       console.error('Disconnect failed:', error);
       deps.notify(
-        error instanceof Error ? error.message : 'Disconnect failed.',
+        error instanceof Error ? error.message : 'Falha ao desconectar.',
         'error'
       );
     } finally {
@@ -370,19 +377,19 @@ export function createWiFiController(deps: WiFiControllerDeps) {
     }
 
     if (isConnecting || isCheckingStatus) {
-      deps.notify('WiFi status is busy. Please wait.', 'warning');
+      deps.notify('O Wi-Fi está ocupado. Aguarde um momento.', 'warning');
       return;
     }
 
     if (!selectedNetwork) {
-      deps.notify('Select a WiFi network first.', 'error');
+      deps.notify('Escolha uma rede Wi-Fi primeiro.', 'error');
       deps.networkList.focus({ preventScroll: true });
       return;
     }
 
     if (requiresPassword() && deps.passwordInput.value.trim().length === 0) {
-      deps.setFieldError(deps.passwordInput, 'Please enter a WiFi password.');
-      deps.notify('Please check if your password is correct.', 'error');
+      deps.setFieldError(deps.passwordInput, 'Digite a senha do Wi-Fi.');
+      deps.notify('Verifique se a senha está correta.', 'error');
       deps.passwordInput.focus({ preventScroll: true });
       return;
     }

@@ -15,7 +15,7 @@ NETWORK_STATUS_TEMPLATE.innerHTML = `
       <div class="wifi-status-card__status">
         <span class="card-icon" id="${WIFI_STATUS_ICON_ID}"></span>
         <span id="${WIFI_STATUS_LABEL_ID}" class="wifi-status-card__label">
-          Disconnected
+          Desconectado
         </span>
         <span
           id="${WIFI_STATUS_NETWORK_ID}"
@@ -27,17 +27,17 @@ NETWORK_STATUS_TEMPLATE.innerHTML = `
           id="${ACTION_BUTTON_ID}"
           variant="outline"
           inverse
-          aria-label="Connect"
+          aria-label="Conectar"
         >
-          Connect
+          Conectar
         </ui-button>
         <ui-button
           id="${SETTINGS_BUTTON_ID}"
           variant="outline"
           inverse
-          aria-label="Settings"
+          aria-label="Configurações"
         >
-          Settings
+          Configurações
         </ui-button>
       </div>
     </div>
@@ -121,7 +121,7 @@ export class NetworkStatus extends HTMLElement {
   }
 
   get actionLabel() {
-    return this.getAttribute("action-label") || "Connect";
+    return this.getAttribute("action-label") || "Conectar";
   }
 
   set actionLabel(value: string) {
@@ -129,7 +129,7 @@ export class NetworkStatus extends HTMLElement {
   }
 
   get statusLabel() {
-    return this.getAttribute("status-label") || "Disconnected";
+    return this.getAttribute("status-label") || "Desconectado";
   }
 
   set statusLabel(value: string) {

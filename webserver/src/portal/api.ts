@@ -32,14 +32,14 @@ export async function fetchApiJson<T>(path: string, init?: RequestInit): Promise
 
   if (!contentType.includes('application/json')) {
     throw new Error(
-      `Unexpected response for ${path}. ` +
-        'Make sure you are connected to the device AP and loading the portal from the ESP32.'
+      `Resposta inesperada de ${path}. ` +
+        'Verifique se você está conectado à rede Wi-Fi do Followup e abriu o portal pelo dispositivo.'
     );
   }
 
   const data = JSON.parse(bodyText) as { success?: boolean; message?: string };
   if (!response.ok || data.success !== true) {
-    throw new Error(data.message || 'Request failed.');
+    throw new Error(data.message || 'Falha na solicitação.');
   }
 
   return data as T;

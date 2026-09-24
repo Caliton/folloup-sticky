@@ -92,8 +92,8 @@ export function bindPortalEvents(deps: BindPortalEventsDeps) {
   // --- Time / timezone ---
   dom.timezoneLocationSaveBtn.addEventListener('click', () => {
     if (!dom.timezoneSelect.value.trim()) {
-      helpers.setFieldError(dom.timezoneSelect, 'Select a timezone.');
-      helpers.setTimezoneLocationNotification('Select a timezone.', 'error');
+      helpers.setFieldError(dom.timezoneSelect, 'Escolha o fuso horário.');
+      helpers.setTimezoneLocationNotification('Escolha o fuso horário.', 'error');
       dom.timezoneSelect.focus({ preventScroll: true });
       return;
     }

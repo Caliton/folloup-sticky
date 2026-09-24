@@ -41,6 +41,10 @@ interface ProviderKeysDeps {
   updateButtons: () => void;
 }
 
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 function applyProviderSettings(
   state: ProviderState,
   input: ProviderInput,
@@ -77,7 +81,7 @@ async function saveProviderKey(
 ) {
   const apiKey = input.value.trim();
   if (!apiKey) {
-    notify(`${successMessage} is required.`, 'warning');
+    notify(`${successMessage} é obrigatória.`, 'warning');
     return;
   }
 
@@ -91,11 +95,11 @@ async function saveProviderKey(
       body: JSON.stringify({ api_key: apiKey }),
     });
     applyProviderSettings(state, input, data.settings);
-    notify(data.message || `${successMessage} stored.`, 'success');
+    notify(data.message || `${successMessage} salva.`, 'success');
   } catch (error) {
     console.error(`${successMessage} save failed:`, error);
     notify(
-      error instanceof Error ? error.message : `Failed to store ${successMessage}.`,
+      error instanceof Error ? error.message : `Falha ao salvar a ${lowerFirst(successMessage)}.`,
       'error'
     );
   } finally {
@@ -126,7 +130,7 @@ async function clearProviderKey(
   } catch (error) {
     console.error(`${successMessage} failed:`, error);
     notify(
-      error instanceof Error ? error.message : `Failed to clear ${successMessage}.`,
+      error instanceof Error ? error.message : 'Falha ao remover a chave da API.',
       'error'
     );
   } finally {
@@ -187,7 +191,7 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
 
     const apiKey = deps.geminiApiKeyInput.value.trim();
     if (!apiKey) {
-      deps.notifyGemini('Gemini API key is required.', 'warning');
+      deps.notifyGemini('A chave da API do Gemini é obrigatória.', 'warning');
       return;
     }
 
@@ -197,8 +201,8 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
       deps.notifyGemini,
       deps.updateButtons,
       deps.fetchGeminiModuleJson,
-      'Saving Gemini API key...',
-      'Gemini API key'
+      'Salvando a chave da API do Gemini...',
+      'Chave da API do Gemini'
     );
   }
 
@@ -213,8 +217,8 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
       deps.notifyGemini,
       deps.updateButtons,
       deps.fetchGeminiModuleJson,
-      'Clearing Gemini API key...',
-      'Gemini API key cleared.'
+      'Limpando a chave da API do Gemini...',
+      'Chave da API do Gemini removida.'
     );
   }
 
@@ -225,7 +229,7 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
 
     const apiKey = deps.openAiApiKeyInput.value.trim();
     if (!apiKey) {
-      deps.notifyOpenAi('OpenAI API key is required.', 'warning');
+      deps.notifyOpenAi('A chave da API da OpenAI é obrigatória.', 'warning');
       return;
     }
 
@@ -235,8 +239,8 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
       deps.notifyOpenAi,
       deps.updateButtons,
       deps.fetchOpenAiModuleJson,
-      'Saving OpenAI API key...',
-      'OpenAI API key'
+      'Salvando a chave da API da OpenAI...',
+      'Chave da API da OpenAI'
     );
   }
 
@@ -251,8 +255,8 @@ export function createProviderKeysController(deps: ProviderKeysDeps) {
       deps.notifyOpenAi,
       deps.updateButtons,
       deps.fetchOpenAiModuleJson,
-      'Clearing OpenAI API key...',
-      'OpenAI API key cleared.'
+      'Limpando a chave da API da OpenAI...',
+      'Chave da API da OpenAI removida.'
     );
   }
 

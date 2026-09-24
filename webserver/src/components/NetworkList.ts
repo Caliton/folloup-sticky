@@ -8,7 +8,7 @@ const NETWORK_LIST_TEMPLATE = document.createElement("template");
 NETWORK_LIST_TEMPLATE.innerHTML = `
   <style>${networkListStyles}</style>
   <div class="networks">
-    <span id="${NETWORK_LIST_LABEL_ID}" hidden>Available networks</span>
+    <span id="${NETWORK_LIST_LABEL_ID}" hidden>Redes disponíveis</span>
     <ul
       id="${NETWORK_LIST_ID}"
       class="networks__list"
@@ -109,7 +109,7 @@ export class NetworkList extends HTMLElement {
   }
 
   private syncAttributes() {
-    const label = this.getAttribute("label") || "Available networks";
+    const label = this.getAttribute("label") || "Redes disponíveis";
     const ariaLabel = this.getAttribute("aria-label");
 
     this.labelElement.textContent = label;

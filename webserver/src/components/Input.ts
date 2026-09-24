@@ -239,7 +239,7 @@ export class Input extends HTMLElement {
       this.toggleButton.disabled = this.disabled;
       this.toggleButton.setAttribute(
         "aria-label",
-        this.isPasswordVisible ? "Hide password" : "Show password"
+        this.isPasswordVisible ? "Ocultar senha" : "Mostrar senha"
       );
       this.toggleButton.innerHTML = svgWithClass(
         this.isPasswordVisible ? hideIcon : showIcon,

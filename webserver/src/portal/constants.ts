@@ -12,7 +12,7 @@ export const POWER_RUNTIME_POLL_INTERVAL_MS = 60000;
 export const UPDATE_RUNTIME_POLL_INTERVAL_MS = 1000;
 export const NETWORK_SCAN_POLL_INTERVAL_MS = 750;
 export const NETWORK_SCAN_POLL_ATTEMPTS = 20;
-export const XIAOZHI_DEFAULT_STATUS = 'Connect to WiFi to get Activation Code';
+export const XIAOZHI_DEFAULT_STATUS = 'Conecte ao Wi-Fi para obter o código de ativação';
 
 export const TALKING_CLOCK_DEFAULTS = {
   phraseIntervalMinutes: 30,

@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Followup Setup</title>
+    <title>Configuração do Followup</title>
     <script type="module" crossorigin src="./index.js"></script>
     <link rel="stylesheet" crossorigin href="./index.css">
   </head>
   <body>
-    <main role="main" aria-label="Followup Setup">
+    <main role="main" aria-label="Configuração do Followup">
       <div id="followupLogo" class="followup-logo" aria-hidden="true"></div>
 
       <div class="connected-components">
@@ -16,14 +16,14 @@
 
         <ui-bottom-sheet
           id="wifiSettingsSheet"
-          title="WiFi Settings"
-          description="Scan for available networks and connect your Followup to WiFi."
+          title="Configurações de Wi-Fi"
+          description="Busque as redes disponíveis e conecte seu Followup ao Wi-Fi."
         >
           <ui-icon-button
             id="wifiSettingsCloseBtn"
             slot="header-actions"
             variant="ghost"
-            aria-label="Close WiFi Settings"
+            aria-label="Fechar configurações de Wi-Fi"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6.7 5.3 12 10.6l5.3-5.3 1.4 1.4L13.4 12l5.3 5.3-1.4 1.4L12 13.4l-5.3 5.3-1.4-1.4L10.6 12 5.3 6.7Z" />
@@ -45,8 +45,8 @@
             <ui-input
               id="password"
               variant="password"
-              label="WiFi Password"
-              placeholder="Enter network password"
+              label="Senha do Wi-Fi"
+              placeholder="Digite a senha da rede"
               autocomplete="off"
             ></ui-input>
           </div>
@@ -56,22 +56,22 @@
             id="scanBtn"
             variant="secondary"
           >
-            Scan Network
+            Buscar redes
           </ui-button>
           <ui-button
             slot="footer"
             id="connectBtn"
             variant="primary"
           >
-            Connect
+            Conectar
           </ui-button>
         </ui-bottom-sheet>
 
-        <ui-card id="geminiCard" title="Gemini API Key">
+        <ui-card id="geminiCard" title="Chave da API do Gemini">
             <ui-input
               id="geminiApiKeyInput"
-              label="Gemini API Key"
-              placeholder="Enter Gemini API key"
+              label="Chave da API do Gemini"
+              placeholder="Digite a chave da API do Gemini"
               autocomplete="off"
               inputmode="text"
             ></ui-input>
@@ -81,43 +81,43 @@
               id="geminiClearBtn"
               variant="secondary"
             >
-              Clear
+              Limpar
             </ui-button>
             <ui-button
               slot="footer"
               id="geminiSaveBtn"
               variant="primary"
             >
-              Save
+              Salvar
             </ui-button>
         </ui-card>
 
-        <ui-card id="timezoneLocationCard" title="Time Configuration">
+        <ui-card id="timezoneLocationCard" title="Data e hora">
             <ui-select
               id="timezoneSelect"
-              label="Timezone"
-              aria-label="Timezone"
+              label="Fuso horário"
+              aria-label="Fuso horário"
             >
-              <option value="">Select timezone</option>
+              <option value="">Escolha o fuso</option>
             </ui-select>
 
             <div class="form-control-row">
               <ui-input
                 id="manualTimeInput"
                 variant="time"
-                label="Time"
+                label="Hora"
               ></ui-input>
 
               <ui-input
                 id="manualDateInput"
                 variant="date"
-                label="Current Date"
+                label="Data atual"
               ></ui-input>
             </div>
 
             <p class="form-helper-text">
-              Set the time zone and location first to sync the current local time. You can also
-              set the date and time manually if needed.
+              Escolha o fuso horário para sincronizar a hora automaticamente. Se preferir, ajuste a
+              data e a hora manualmente.
             </p>
 
             <ui-button
@@ -125,14 +125,14 @@
               id="timezoneLocationClearBtn"
               variant="secondary"
             >
-              Clear
+              Limpar
             </ui-button>
             <ui-button
               slot="footer"
               id="timezoneLocationSaveBtn"
               variant="primary"
             >
-              Save
+              Salvar
             </ui-button>
         </ui-card>
       </div>
@@ -140,8 +140,8 @@
 
     <ui-toast
       id="statusToast"
-      aria-label="Status notification"
+      aria-label="Notificação de status"
     ></ui-toast>
-
+
   </body>
 </html>
