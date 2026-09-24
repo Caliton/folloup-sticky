@@ -20,17 +20,18 @@ constexpr std::array<Slide, 6> kSlides = {{
     {"Boas-vindas ao Followup",
      "Seu caderno de voz de bolso. Registre ideias em voz alta e deixe o Followup organizá-las.",
      EmbeddedImageId::kSlide1},
-    {"Grave num toque",
-     "Aperte o mic para gravar uma nota, ideia ou tarefa. Tudo é salvo no cartão SD. Aperte duas "
-     "vezes para bloquear a tela.",
+    // Controls of the Waveshare ESP32-S3-ePaper-3.97: rocker (up/down/press), BOOT, PWR.
+    {"Grave e bloqueie",
+     "Segure o BOOT para gravar uma nota, ideia ou tarefa e solte para parar. Toque no PWR "
+     "para bloquear a tela.",
      EmbeddedImageId::kSlide2},
-    {"Navegue pelas teclas",
-     "A tecla 1 seleciona, a tecla 2 sobe e a tecla 3 desce. Segure a tecla 3 para sair de alguns "
-     "componentes.",
+    {"Navegue pela alavanca",
+     "Mova a alavanca para subir ou descer e aperte para selecionar. Segure para baixo para "
+     "voltar.",
      EmbeddedImageId::kSlide3},
     {"Repouso e energia",
-     "O aparelho repousa quando inativo. Segure as teclas 1 e 2 para desligar; segure a tecla 1 "
-     "para ligar.",
+     "O aparelho repousa sozinho quando parado. Segure o PWR por 1 s para desligar ou 6 s "
+     "para forçar.",
      EmbeddedImageId::kSlide4},
     {"Resumos com o Gemini",
      "Conecte o Gemini e deixe o Followup transcrever suas gravações e resumir o seu dia.",
