@@ -421,7 +421,7 @@ esp_err_t SaveClipOnMountedFilesystem(const char* mount_point, void* context)
     const std::string directory = JoinPath(mount_point, ArchiveSubdirectory(save->options.tag));
     if (!EnsureDirectoryExists(directory)) {
         result.error_code = "directory_create_failed";
-        result.error_message = "Failed to prepare SD archive directory";
+        result.error_message = "Falha ao preparar a pasta no cartão SD";
         return ESP_FAIL;
     }
 
@@ -449,7 +449,7 @@ esp_err_t SaveClipOnMountedFilesystem(const char* mount_point, void* context)
     result.clip_saved = WriteClipWav(result.recording_path, *save->clip);
     if (!result.clip_saved) {
         result.error_code = "clip_write_failed";
-        result.error_message = "Failed to save WAV to SD";
+        result.error_message = "Falha ao salvar o WAV no cartão SD";
         return ESP_FAIL;
     }
 
@@ -464,10 +464,10 @@ esp_err_t SaveClipOnMountedFilesystem(const char* mount_point, void* context)
                                            metadata_json.data(),
                                            metadata_json.size());
     result.success = result.clip_saved && result.metadata_saved;
-    result.status_message = result.success ? "Recording saved" : "Recording saved with metadata issue";
+    result.status_message = result.success ? "Gravação salva" : "Gravação salva com erro nos metadados";
     if (!result.metadata_saved) {
         result.error_code = "metadata_write_failed";
-        result.error_message = "Failed to save recording metadata";
+        result.error_message = "Falha ao salvar os metadados da gravação";
         return ESP_FAIL;
     }
 
@@ -502,7 +502,7 @@ esp_err_t SaveTranscriptOnMountedFilesystem(const char* mount_point, void* conte
     std::string base_path;
     if (!ResolveExistingBasePath(mount_point, save->recording_id, &base_path)) {
         result.error_code = "recording_not_found";
-        result.error_message = "Saved recording was not found on SD";
+        result.error_message = "Gravação não encontrada no cartão SD";
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -522,7 +522,7 @@ esp_err_t SaveTranscriptOnMountedFilesystem(const char* mount_point, void* conte
                                              std::strlen(save->transcript));
     if (!result.transcript_saved) {
         result.error_code = "transcript_write_failed";
-        result.error_message = "Failed to save transcript to SD";
+        result.error_message = "Falha ao salvar a transcrição no cartão SD";
         return ESP_FAIL;
     }
 
@@ -543,10 +543,10 @@ esp_err_t SaveTranscriptOnMountedFilesystem(const char* mount_point, void* conte
     }
 
     result.success = result.transcript_saved;
-    result.status_message = result.transcript_saved ? "Transcript ready" : "Transcript save failed";
+    result.status_message = result.transcript_saved ? "Transcrição pronta" : "Falha ao salvar a transcrição";
     if (!result.metadata_saved) {
         result.error_code = "metadata_update_failed";
-        result.error_message = "Transcript saved, but metadata update failed";
+        result.error_message = "Transcrição salva, mas falha ao atualizar os metadados";
     }
 
     ESP_LOGI(kTag,
@@ -1077,7 +1077,7 @@ SaveResult SaveClip(const recording_service::RecordedClip& clip, const SaveOptio
     SaveResult result = {};
     if (clip.empty()) {
         result.error_code = "empty_audio";
-        result.error_message = "Recording clip was empty";
+        result.error_message = "O clipe da gravação estava vazio";
         return result;
     }
 
@@ -1102,12 +1102,12 @@ SaveResult SaveTranscript(const std::string& recording_id, const std::string& tr
     SaveResult result = {};
     if (recording_id.empty()) {
         result.error_code = "recording_id_missing";
-        result.error_message = "Recording ID was missing";
+        result.error_message = "ID da gravação ausente";
         return result;
     }
     if (transcript.empty()) {
         result.error_code = "empty_transcript";
-        result.error_message = "Transcript text was empty";
+        result.error_message = "O texto da transcrição estava vazio";
         return result;
     }
 

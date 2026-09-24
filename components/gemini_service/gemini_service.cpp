@@ -47,8 +47,8 @@ constexpr const char* kUploadUrl =
     "https://generativelanguage.googleapis.com/upload/v1beta/files";
 constexpr const char* kAudioMimeType = "audio/wav";
 constexpr const char* kTranscriptPrompt =
-    "Generate a verbatim transcript of the speech in this audio. Respond with transcript text "
-    "only. Do not add commentary or formatting.";
+    "Transcreva literalmente a fala deste áudio, no idioma em que foi falada, sem traduzir. "
+    "Responda apenas com o texto da transcrição, sem comentários nem formatação.";
 constexpr int kTranscribeTimeoutMs = 30000;
 constexpr size_t kHttpUploadChunkSamples = 2048;
 
@@ -364,7 +364,7 @@ void PopulateHttpError(cJSON* root, const HttpResponse& response,
     }
     if (error_message->empty()) {
         *error_message =
-            response.body.empty() ? "Gemini request failed" : response.body;
+            response.body.empty() ? "Falha na solicitação ao Gemini" : response.body;
     }
     *error_message = TrimForLog(std::move(*error_message));
 }
@@ -387,7 +387,7 @@ HttpResponse PerformGeminiModelGet(const std::string& api_key,
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == nullptr) {
         response.error_code = "http_client_init_failed";
-        response.error_message = "Failed to initialize Gemini HTTP client";
+        response.error_message = "Falha ao iniciar o cliente HTTP do Gemini";
         return response;
     }
 
@@ -451,7 +451,7 @@ void CompleteAuthentication(uint32_t generation, const AuthResult& result)
 
             if (!result.success) {
                 s_authenticated = false;
-                s_last_status_message = "Authentication failed";
+                s_last_status_message = "Falha na autenticação";
                 s_last_model_resource_name.clear();
                 s_last_model_display_name.clear();
                 SetLastErrorLocked(result.error_code.c_str(), result.error_message.c_str());
@@ -460,8 +460,8 @@ void CompleteAuthentication(uint32_t generation, const AuthResult& result)
                 s_last_model_resource_name = result.model_resource_name;
                 s_last_model_display_name = result.model_display_name;
                 s_last_status_message = !s_last_model_display_name.empty()
-                                            ? "Authenticated with " + s_last_model_display_name
-                                            : "Authenticated with Gemini";
+                                            ? "Autenticado com " + s_last_model_display_name
+                                            : "Autenticado com o Gemini";
                 ClearLastErrorLocked();
             }
         }
@@ -500,7 +500,7 @@ void AuthenticationTask(void* arg)
             .model_resource_name = {},
             .model_display_name = {},
             .error_code = "task_context_missing",
-            .error_message = "Gemini authentication task context missing",
+            .error_message = "Contexto da autenticação do Gemini ausente",
         });
         vTaskDelete(nullptr);
         return;
@@ -634,7 +634,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
     cJSON* root = cJSON_ParseWithLength(body.c_str(), body.size());
     if (root == nullptr) {
         if (error != nullptr) {
-            *error = "Invalid JSON body";
+            *error = "Corpo JSON inválido";
         }
         return false;
     }
@@ -645,7 +645,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
         patch->api_key = api_key->valuestring;
     } else if (api_key != nullptr && !cJSON_IsNull(api_key)) {
         if (error != nullptr) {
-            *error = "Invalid api_key";
+            *error = "api_key inválida";
         }
         cJSON_Delete(root);
         return false;
@@ -674,7 +674,7 @@ esp_err_t RegisterPortalRoute(httpd_handle_t server, const httpd_uri_t* handler)
 esp_err_t HandlePortalSettingsGet(httpd_req_t* request)
 {
     cJSON* root = cJSON_CreateObject();
-    AppendSnapshot(root, GetSnapshot(), "Gemini settings loaded");
+    AppendSnapshot(root, GetSnapshot(), "Configurações do Gemini carregadas");
     return SendJsonResponse(request, 200, root);
 }
 
@@ -685,7 +685,7 @@ esp_err_t HandlePortalSettingsPatch(httpd_req_t* request)
         request->content_len > static_cast<int>(kMaxPortalPayloadLen)) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "Invalid Gemini settings payload");
+        cJSON_AddStringToObject(root, "message", "Configurações do Gemini inválidas");
         return SendJsonResponse(request, 400, root);
     }
 
@@ -696,7 +696,7 @@ esp_err_t HandlePortalSettingsPatch(httpd_req_t* request)
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
         cJSON_AddStringToObject(root, "message",
-                                parse_error.empty() ? "Invalid Gemini settings payload"
+                                parse_error.empty() ? "Configurações do Gemini inválidas"
                                                     : parse_error.c_str());
         return SendJsonResponse(request, 400, root);
     }
@@ -712,7 +712,7 @@ esp_err_t HandlePortalSettingsPatch(httpd_req_t* request)
     }
 
     cJSON* root = cJSON_CreateObject();
-    AppendSnapshot(root, GetSnapshot(), "Gemini API key stored");
+    AppendSnapshot(root, GetSnapshot(), "Chave de API do Gemini salva");
     return SendJsonResponse(request, 200, root);
 }
 
@@ -729,14 +729,14 @@ esp_err_t HandlePortalSettingsReset(httpd_req_t* request)
     }
 
     cJSON* root = cJSON_CreateObject();
-    AppendSnapshot(root, GetSnapshot(), "Gemini API key cleared");
+    AppendSnapshot(root, GetSnapshot(), "Chave de API do Gemini removida");
     return SendJsonResponse(request, 200, root);
 }
 
 esp_err_t HandlePortalRuntimeGet(httpd_req_t* request)
 {
     cJSON* root = cJSON_CreateObject();
-    AppendSnapshot(root, GetSnapshot(), "Gemini runtime loaded");
+    AppendSnapshot(root, GetSnapshot(), "Status do Gemini carregado");
     return SendJsonResponse(request, 200, root);
 }
 
@@ -757,7 +757,7 @@ HttpResponse PerformGeminiPost(const std::string& url, const std::string& api_ke
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == nullptr) {
         response.error_code = "http_client_init_failed";
-        response.error_message = "Failed to initialize Gemini HTTP client";
+        response.error_message = "Falha ao iniciar o cliente HTTP do Gemini";
         return response;
     }
 
@@ -916,7 +916,7 @@ bool ReadHttpResponseBody(esp_http_client_handle_t client, HttpResponse* respons
         const int read = esp_http_client_read(client, buffer.data(), buffer.size());
         if (read < 0) {
             response->error_code = "transport_error";
-            response->error_message = "Failed reading HTTP response body";
+            response->error_message = "Falha ao ler a resposta HTTP";
             return false;
         }
         if (read == 0) {
@@ -942,7 +942,7 @@ HttpResponse PerformUploadStart(const std::string& api_key, size_t num_bytes)
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == nullptr) {
         response.error_code = "http_client_init_failed";
-        response.error_message = "Failed to initialize Gemini upload client";
+        response.error_message = "Falha ao iniciar o envio para o Gemini";
         return response;
     }
 
@@ -981,7 +981,7 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == nullptr) {
         response.error_code = "http_client_init_failed";
-        response.error_message = "Failed to initialize Gemini upload finalize client";
+        response.error_message = "Falha ao iniciar a finalização do envio para o Gemini";
         return response;
     }
 
@@ -1007,7 +1007,7 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
         client, reinterpret_cast<const char*>(header.data()), static_cast<int>(header.size()));
     if (header_written != static_cast<int>(header.size())) {
         response.error_code = "transport_error";
-        response.error_message = "Failed writing WAV header";
+        response.error_message = "Falha ao gravar o cabeçalho WAV";
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return response;
@@ -1027,7 +1027,7 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
     });
     if (write_failed) {
         response.error_code = "transport_error";
-        response.error_message = "Failed streaming Gemini audio upload";
+        response.error_message = "Falha ao enviar o áudio para o Gemini";
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return response;
@@ -1037,7 +1037,7 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
     response.status_code = esp_http_client_get_status_code(client);
     if (response.status_code <= 0 && response_length < 0) {
         response.error_code = "transport_error";
-        response.error_message = "Failed fetching Gemini upload response headers";
+        response.error_message = "Falha ao ler a resposta do envio ao Gemini";
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return response;
@@ -1106,8 +1106,8 @@ esp_err_t Init()
         s_stored_api_key = LoadStoredApiKey();
         s_last_status_message =
             GetEffectiveApiKeyLocked().empty()
-                ? "No Gemini API key configured"
-                : "Gemini API key available";
+                ? "Nenhuma chave de API do Gemini configurada"
+                : "Chave de API do Gemini disponível";
         ClearLastErrorLocked();
         s_initialized = true;
         snapshot = BuildSnapshotLocked();
@@ -1155,7 +1155,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
                 .status_code = 400,
                 .field = "api_key",
                 .error_code = "missing_api_key",
-                .message = "Gemini API key is required",
+                .message = "A chave de API do Gemini é obrigatória",
             };
         }
 
@@ -1167,12 +1167,12 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
                 .status_code = 400,
                 .field = "api_key",
                 .error_code = "invalid_api_key",
-                .message = "Gemini API key is required",
+                .message = "A chave de API do Gemini é obrigatória",
             };
         }
 
         if (!SaveStoredApiKey(trimmed)) {
-            SetLastErrorLocked("nvs_write_failed", "Failed to store Gemini API key");
+            SetLastErrorLocked("nvs_write_failed", "Falha ao salvar a chave de API do Gemini");
             save_failed = true;
         } else {
             s_stored_api_key = trimmed;
@@ -1181,7 +1181,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
             s_auth_checked = false;
             s_authenticated = false;
             s_last_http_status = 0;
-            s_last_status_message = "Gemini API key stored";
+            s_last_status_message = "Chave de API do Gemini salva";
             s_last_model_resource_name.clear();
             s_last_model_display_name.clear();
             ClearLastErrorLocked();
@@ -1197,7 +1197,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
             .status_code = 500,
             .field = "api_key",
             .error_code = "nvs_write_failed",
-            .message = "Failed to store Gemini API key",
+            .message = "Falha ao salvar a chave de API do Gemini",
         };
     }
 
@@ -1211,7 +1211,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
         .status_code = 200,
         .field = {},
         .error_code = {},
-        .message = "Gemini API key stored",
+        .message = "Chave de API do Gemini salva",
     };
 }
 
@@ -1227,7 +1227,7 @@ Result ClearStoredApiKey()
         }
 
         if (!ClearStoredApiKeyFromNvs()) {
-            SetLastErrorLocked("nvs_clear_failed", "Failed to clear Gemini API key");
+            SetLastErrorLocked("nvs_clear_failed", "Falha ao remover a chave de API do Gemini");
             clear_failed = true;
         } else {
             s_stored_api_key.clear();
@@ -1236,7 +1236,7 @@ Result ClearStoredApiKey()
             s_auth_checked = false;
             s_authenticated = false;
             s_last_http_status = 0;
-            s_last_status_message = "Gemini API key cleared";
+            s_last_status_message = "Chave de API do Gemini removida";
             s_last_model_resource_name.clear();
             s_last_model_display_name.clear();
             ClearLastErrorLocked();
@@ -1252,7 +1252,7 @@ Result ClearStoredApiKey()
             .status_code = 500,
             .field = "api_key",
             .error_code = "nvs_clear_failed",
-            .message = "Failed to clear Gemini API key",
+            .message = "Falha ao remover a chave de API do Gemini",
         };
     }
 
@@ -1265,7 +1265,7 @@ Result ClearStoredApiKey()
         .status_code = 200,
         .field = {},
         .error_code = {},
-        .message = "Gemini API key cleared",
+        .message = "Chave de API do Gemini removida",
     };
 }
 
@@ -1293,12 +1293,12 @@ TextResult GenerateText(const std::string& prompt)
     const std::string model_name = GetEffectiveModelName();
     if (api_key.empty() || model_name.empty()) {
         result.error_code = "not_configured";
-        result.error_message = "No Gemini API key configured";
+        result.error_message = "Nenhuma chave de API do Gemini configurada";
         return result;
     }
     if (prompt.empty()) {
         result.error_code = "empty_prompt";
-        result.error_message = "Prompt was empty";
+        result.error_message = "O prompt estava vazio";
         return result;
     }
 
@@ -1315,7 +1315,7 @@ TextResult GenerateText(const std::string& prompt)
             result.success = !result.text.empty();
             if (!result.success) {
                 result.error_code = "empty_response";
-                result.error_message = "Gemini returned no text";
+                result.error_message = "O Gemini não retornou texto";
             }
         } else {
             PopulateHttpError(root, http, &result.error_code, &result.error_message);
@@ -1344,7 +1344,7 @@ TokenCountResult CountTokens(const std::string& prompt)
     const std::string model_name = GetEffectiveModelName();
     if (api_key.empty() || model_name.empty()) {
         result.error_code = "not_configured";
-        result.error_message = "No Gemini API key configured";
+        result.error_message = "Nenhuma chave de API do Gemini configurada";
         return result;
     }
     if (prompt.empty()) {
@@ -1371,7 +1371,7 @@ TokenCountResult CountTokens(const std::string& prompt)
             result.success = true;
         } else {
             result.error_code = "empty_response";
-            result.error_message = "Gemini returned no token count";
+            result.error_message = "O Gemini não retornou a contagem de tokens";
         }
     } else {
         PopulateHttpError(root, http, &result.error_code, &result.error_message);
@@ -1398,12 +1398,12 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
     const std::string model_name = GetEffectiveModelName();
     if (api_key.empty() || model_name.empty()) {
         result.error_code = "not_configured";
-        result.error_message = "No Gemini API key configured";
+        result.error_message = "Nenhuma chave de API do Gemini configurada";
         return result;
     }
     if (clip.empty()) {
         result.error_code = "empty_audio";
-        result.error_message = "No recorded audio available";
+        result.error_message = "Nenhum áudio gravado disponível";
         return result;
     }
 
@@ -1420,7 +1420,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
             !upload_start.error_message.empty()
                 ? upload_start.error_message
                 : (!upload_start.body.empty() ? upload_start.body
-                                              : "Failed to start Gemini file upload"));
+                                              : "Falha ao iniciar o envio do arquivo ao Gemini"));
         return result;
     }
 
@@ -1438,7 +1438,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
             !upload_finalize.error_message.empty()
                 ? upload_finalize.error_message
                 : (!upload_finalize.body.empty() ? upload_finalize.body
-                                                 : "Failed to upload Gemini audio file"));
+                                                 : "Falha ao enviar o arquivo de áudio ao Gemini"));
         return result;
     }
 
@@ -1450,7 +1450,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
     }
     if (file_uri.empty()) {
         result.error_code = "file_uri_missing";
-        result.error_message = "Gemini upload did not return a file URI";
+        result.error_message = "O envio ao Gemini não retornou a URI do arquivo";
         return result;
     }
 
@@ -1472,7 +1472,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
         result.success = !result.transcript.empty();
         if (!result.success) {
             result.error_code = "empty_transcript";
-            result.error_message = "Gemini returned no transcript text";
+            result.error_message = "O Gemini não retornou a transcrição";
         }
     } else {
         PopulateHttpError(root, http, &result.error_code, &result.error_message);
@@ -1509,10 +1509,10 @@ bool BeginAuthentication()
             s_auth_checked = false;
             s_authenticated = false;
             s_last_http_status = 0;
-            s_last_status_message = "Authentication skipped";
+            s_last_status_message = "Autenticação ignorada";
             s_last_model_resource_name.clear();
             s_last_model_display_name.clear();
-            SetLastErrorLocked("not_configured", "No Gemini API key configured");
+            SetLastErrorLocked("not_configured", "Nenhuma chave de API do Gemini configurada");
             missing_api_key = true;
         } else if (!s_network_connected) {
             return false;
@@ -1523,7 +1523,7 @@ bool BeginAuthentication()
             s_auth_checked = false;
             s_authenticated = false;
             s_last_http_status = 0;
-            s_last_status_message = "Authenticating with Gemini";
+            s_last_status_message = "Autenticando com o Gemini";
             s_last_model_resource_name.clear();
             s_last_model_display_name.clear();
             ClearLastErrorLocked();
@@ -1569,11 +1569,11 @@ bool BeginAuthentication()
         {
             std::lock_guard<std::mutex> lock(s_mutex);
             s_request_in_flight = false;
-            s_last_status_message = "Failed to start Gemini authentication";
+            s_last_status_message = "Falha ao iniciar a autenticação do Gemini";
             SetLastErrorLocked(task_alloc_failed ? "task_alloc_failed" : "task_start_failed",
                                task_alloc_failed
-                                   ? "Failed to allocate Gemini task context"
-                                   : "Failed to start Gemini authentication task");
+                                   ? "Falha ao alocar memória para o Gemini"
+                                   : "Falha ao iniciar a tarefa de autenticação do Gemini");
         }
         Notify();
         return false;

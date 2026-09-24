@@ -700,7 +700,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
     cJSON* root = cJSON_ParseWithLength(body.c_str(), body.size());
     if (root == nullptr) {
         if (error != nullptr) {
-            *error = "Invalid JSON body";
+            *error = "Corpo JSON inválido";
         }
         return false;
     }
@@ -711,7 +711,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
         patch->enabled = cJSON_IsTrue(enabled);
     } else if (enabled != nullptr && !cJSON_IsNull(enabled)) {
         if (error != nullptr) {
-            *error = "Invalid enabled";
+            *error = "Valor de enabled inválido";
         }
         cJSON_Delete(root);
         return false;
@@ -723,7 +723,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
         patch->timezone_name = timezone_name->valuestring;
     } else if (timezone_name != nullptr && !cJSON_IsNull(timezone_name)) {
         if (error != nullptr) {
-            *error = "Invalid timezone_name";
+            *error = "timezone_name inválido";
         }
         cJSON_Delete(root);
         return false;
@@ -735,7 +735,7 @@ bool ParsePatchBody(const std::string& body, SettingsPatch* patch, std::string* 
         patch->location = location->valuestring;
     } else if (location != nullptr && !cJSON_IsNull(location)) {
         if (error != nullptr) {
-            *error = "Invalid location";
+            *error = "Localização inválida";
         }
         cJSON_Delete(root);
         return false;
@@ -783,7 +783,7 @@ esp_err_t RegisterPortalRoute(httpd_handle_t server, const httpd_uri_t* handler)
 esp_err_t HandlePortalTimeSettings(httpd_req_t* request)
 {
     cJSON* root = cJSON_CreateObject();
-    AppendSnapshot(root, GetSnapshot(), "Time settings loaded");
+    AppendSnapshot(root, GetSnapshot(), "Configurações de hora carregadas");
     return SendJsonResponse(request, 200, root);
 }
 
@@ -794,7 +794,7 @@ esp_err_t HandlePortalTimeSettingsPatch(httpd_req_t* request)
         request->content_len > static_cast<int>(kMaxPortalPayloadLen)) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "Invalid time settings payload");
+        cJSON_AddStringToObject(root, "message", "Configurações de hora inválidas");
         return SendJsonResponse(request, 400, root);
     }
 
@@ -805,7 +805,7 @@ esp_err_t HandlePortalTimeSettingsPatch(httpd_req_t* request)
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
         cJSON_AddStringToObject(root, "message",
-                                parse_error.empty() ? "Invalid time settings payload"
+                                parse_error.empty() ? "Configurações de hora inválidas"
                                                     : parse_error.c_str());
         return SendJsonResponse(request, 400, root);
     }
@@ -833,7 +833,7 @@ esp_err_t HandlePortalTimeRuntime(httpd_req_t* request)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddBoolToObject(root, "success", true);
-    cJSON_AddStringToObject(root, "message", "Time runtime loaded");
+    cJSON_AddStringToObject(root, "message", "Status da hora carregado");
     cJSON* runtime = cJSON_AddObjectToObject(root, "runtime");
     AppendRuntime(runtime, GetSnapshot().runtime);
     return SendJsonResponse(request, 200, root);
@@ -843,7 +843,7 @@ esp_err_t HandlePortalTimezoneList(httpd_req_t* request)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON_AddBoolToObject(root, "success", true);
-    cJSON_AddStringToObject(root, "message", "Timezone list loaded");
+    cJSON_AddStringToObject(root, "message", "Lista de fusos horários carregada");
     cJSON* timezones = cJSON_AddArrayToObject(root, "timezones");
     for (const TimezoneInfo& timezone : ListTimezones()) {
         cJSON* item = cJSON_CreateObject();
@@ -980,7 +980,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
 
         if (patch.has_manual_datetime && staged_timezone_name.empty()) {
             return MakeValidationError("timezone_name", "required_for_manual_time",
-                                       "timezone_name required to set manual time");
+                                       "timezone_name obrigatório para ajustar a hora manualmente");
         }
         if (enable_clock && staged_timezone_name.empty()) {
             return MakeValidationError("timezone_name", "required_for_clock",
@@ -992,7 +992,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
     if (!staged_timezone_name.empty()) {
         if (!ApplyTimezoneByName(staged_timezone_name)) {
             return MakeValidationError("timezone_name", "invalid_timezone",
-                                       "Invalid timezone_name");
+                                       "timezone_name inválido");
         }
         timezone_checked = true;
     }
@@ -1000,16 +1000,16 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
     if (patch.has_manual_datetime && !use_network_time) {
         if (!timezone_checked && !ApplyTimezoneByName(staged_timezone_name)) {
             return MakeValidationError("timezone_name", "invalid_timezone",
-                                       "Invalid timezone_name");
+                                       "timezone_name inválido");
         }
         if (!ParseLocalDateTime(patch.manual_date, patch.manual_time, &manual_epoch)) {
             return MakeValidationError("manual_date", "invalid_manual_time",
-                                       "Invalid manual date/time");
+                                       "Data/hora manual inválida");
         }
         has_manual_epoch = true;
         if (!SetSystemEpoch(manual_epoch, TimeSource::kManual, true) ||
             !SetRtcFromEpoch(manual_epoch)) {
-            return MakeError(500, "Failed to set manual time");
+            return MakeError(500, "Falha ao ajustar a hora manual");
         }
     }
 
@@ -1019,7 +1019,7 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
         s_timezone_name = staged_timezone_name;
         s_location = staged_location;
         if (!SaveSettingsToStorageLocked()) {
-            return MakeError(500, "Failed to save time settings");
+            return MakeError(500, "Falha ao salvar as configurações de hora");
         }
     }
 
@@ -1033,12 +1033,12 @@ Result ApplySettingsPatch(const SettingsPatch& patch)
     } else if (enable_clock && !has_manual_epoch && !staged_timezone_name.empty()) {
         if (!timezone_checked && !ApplyTimezoneByName(staged_timezone_name)) {
             return MakeValidationError("timezone_name", "invalid_timezone",
-                                       "Invalid timezone_name");
+                                       "timezone_name inválido");
         }
     }
 
     Notify();
-    return MakeSuccess(enable_clock ? "Time settings updated" : "Clock disabled");
+    return MakeSuccess(enable_clock ? "Configurações de hora atualizadas" : "Relógio desativado");
 }
 
 bool SyncNow(const char* ntp_server, uint32_t timeout_ms)

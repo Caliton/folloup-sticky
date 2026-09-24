@@ -20,18 +20,18 @@ namespace recording_session_service {
 namespace {
 
 constexpr const char* kTag = "RecordingSession";
-constexpr const char* kIdleStatus = "Hold POWER to record";
-constexpr const char* kArmedStatus = "Keep holding to record";
-constexpr const char* kRecordingStatus = "Recording";
-constexpr const char* kStartCueStatus = "Starting recording";
-constexpr const char* kStopCueStatus = "Finishing recording";
-constexpr const char* kPlayingBackStatus = "Playing back";
-constexpr const char* kChooseTagStatus = "Choose recording type";
-constexpr const char* kSavingStatus = "Saving recording";
-constexpr const char* kTranscribingStatus = "Transcribing recording";
+constexpr const char* kIdleStatus = "Segure BOOT para gravar";
+constexpr const char* kArmedStatus = "Continue segurando para gravar";
+constexpr const char* kRecordingStatus = "Gravando";
+constexpr const char* kStartCueStatus = "Iniciando gravação";
+constexpr const char* kStopCueStatus = "Finalizando gravação";
+constexpr const char* kPlayingBackStatus = "Reproduzindo";
+constexpr const char* kChooseTagStatus = "Escolha o tipo de gravação";
+constexpr const char* kSavingStatus = "Salvando gravação";
+constexpr const char* kTranscribingStatus = "Transcrevendo gravação";
 constexpr const char* kSavedWithoutTranscriptStatus =
-    "Recording saved without transcription";
-constexpr const char* kDiscardedStatus = "Recording discarded";
+    "Gravação salva sem transcrição";
+constexpr const char* kDiscardedStatus = "Gravação descartada";
 constexpr uint32_t kMinTranscriptionDurationMs = 500;
 constexpr uint32_t kFallbackAudioSampleRateHz = 24000;
 constexpr size_t kSignalWindowSamples = 240;
@@ -39,10 +39,10 @@ constexpr int32_t kSpeechPeakThreshold = 700;
 constexpr size_t kMinSpeechWindows = 3;
 
 constexpr std::array<TagOption, 4> kTagOptions = {{
-    {.tag = recording_archive_service::RecordingTag::kNote, .label_text = "Note"},
-    {.tag = recording_archive_service::RecordingTag::kTask, .label_text = "Task"},
-    {.tag = recording_archive_service::RecordingTag::kIdea, .label_text = "Idea"},
-    {.label_text = "Discard", .is_discard = true},
+    {.tag = recording_archive_service::RecordingTag::kNote, .label_text = "Nota"},
+    {.tag = recording_archive_service::RecordingTag::kTask, .label_text = "Tarefa"},
+    {.tag = recording_archive_service::RecordingTag::kIdea, .label_text = "Ideia"},
+    {.label_text = "Descartar", .is_discard = true},
 }};
 
 struct GuardrailResult {
@@ -83,7 +83,7 @@ GuardrailResult ValidateClip(const recording_service::RecordedClip& clip, uint32
         return {
             .accepted = false,
             .error_code = "empty_audio",
-            .status_message = "Recording too short",
+            .status_message = "Gravação muito curta",
         };
     }
 
@@ -92,7 +92,7 @@ GuardrailResult ValidateClip(const recording_service::RecordedClip& clip, uint32
         return {
             .accepted = false,
             .error_code = "recording_too_short",
-            .status_message = "Recording too short",
+            .status_message = "Gravação muito curta",
         };
     }
 
@@ -147,7 +147,7 @@ GuardrailResult ValidateClip(const recording_service::RecordedClip& clip, uint32
     return {
         .accepted = false,
         .error_code = "recording_too_quiet",
-        .status_message = "No speech detected",
+        .status_message = "Nenhuma fala detectada",
     };
 }
 
@@ -175,15 +175,15 @@ const char* BlockedReasonStatusMessage(BlockedReason reason)
 {
     switch (reason) {
         case BlockedReason::kLockScreenActive:
-            return "Unlock to record";
+            return "Desbloqueie para gravar";
         case BlockedReason::kOverlayVisible:
-            return "Close the current dialog";
+            return "Feche a janela atual";
         case BlockedReason::kStorageBusy:
-            return "Wait for SD activity to finish";
+            return "Aguarde o cartão SD terminar";
         case BlockedReason::kRecorderUnavailable:
-            return "Recorder unavailable";
+            return "Gravador indisponível";
         case BlockedReason::kTranscriptionInFlight:
-            return "Wait for transcription to finish";
+            return "Aguarde a transcrição terminar";
         case BlockedReason::kNone:
         default:
             return "";
@@ -353,7 +353,7 @@ void HandleStartCueResult(uint32_t token, SoundCuePlaybackResult)
         s_finish_pending_after_start_cue = false;
         if (finish_now) {
             s_snapshot.phase = Phase::kSaving;
-            s_snapshot.last_status_message = "Preparing recording";
+            s_snapshot.last_status_message = "Preparando gravação";
         } else {
             s_snapshot.phase = Phase::kRecording;
             s_snapshot.last_status_message = kRecordingStatus;
@@ -427,9 +427,9 @@ bool BeginArchivedTranscription(const std::string& recording_id)
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.phase = Phase::kFailed;
         s_snapshot.request_in_flight = false;
-        s_snapshot.last_status_message = "Couldn't load recording audio";
+        s_snapshot.last_status_message = "Não foi possível carregar o áudio";
         s_snapshot.last_error_code = "clip_load_failed";
-        s_snapshot.last_error_message = "Failed to read WAV from SD";
+        s_snapshot.last_error_message = "Falha ao ler o WAV do cartão SD";
         NotifyLocked();
         return false;
     }
@@ -458,7 +458,7 @@ bool BeginArchivedTranscription(const std::string& recording_id)
     s_snapshot.phase = Phase::kFailed;
     s_snapshot.request_in_flight = false;
     s_snapshot.last_status_message =
-        ts.last_status_message.empty() ? "Transcription unavailable" : ts.last_status_message;
+        ts.last_status_message.empty() ? "Transcrição indisponível" : ts.last_status_message;
     s_snapshot.last_error_code = ts.last_error_code;
     s_snapshot.last_error_message = ts.last_error_message;
     s_pending_recording_id.clear();
@@ -496,7 +496,7 @@ bool HandlePowerPressDown(const Context& context)
         s_snapshot.phase = Phase::kFailed;
         s_snapshot.allowed = false;
         s_snapshot.blocked_reason = BlockedReason::kRecorderUnavailable;
-        s_snapshot.last_status_message = "Recorder unavailable";
+        s_snapshot.last_status_message = "Gravador indisponível";
         s_snapshot.last_error_code = "record_arm_failed";
         s_snapshot.last_error_message = esp_err_to_name(err);
         NotifyLocked();
@@ -538,7 +538,7 @@ bool HandlePowerLongPressStart(const Context& context)
         std::lock_guard<std::mutex> lock(s_mutex);
         if (err != ESP_OK) {
             s_snapshot.phase = Phase::kFailed;
-            s_snapshot.last_status_message = "Recording failed to start";
+            s_snapshot.last_status_message = "Falha ao iniciar a gravação";
             s_snapshot.last_error_code = "record_start_failed";
             s_snapshot.last_error_message = esp_err_to_name(err);
             NotifyLocked();
@@ -596,7 +596,7 @@ bool HandlePowerPressUp(const Context&)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.phase = Phase::kSaving;
-        s_snapshot.last_status_message = "Preparing recording";
+        s_snapshot.last_status_message = "Preparando gravação";
         NotifyLocked();
     }
     (void)recording_service::Finish();
@@ -644,9 +644,9 @@ bool SubmitTagSelection(int selected_index)
     if (!clip || clip->empty()) {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.phase = Phase::kFailed;
-        s_snapshot.last_status_message = "Save failed";
+        s_snapshot.last_status_message = "Falha ao salvar";
         s_snapshot.last_error_code = "recording_missing";
-        s_snapshot.last_error_message = "Recording clip was not available";
+        s_snapshot.last_error_message = "O clipe da gravação não estava disponível";
         NotifyLocked();
         return false;
     }
@@ -722,7 +722,7 @@ bool SubmitTagSelection(int selected_index)
         s_snapshot.last_status_message = save_result.clip_saved
                                              ? kSavedWithoutTranscriptStatus
                                              : (save_result.status_message.empty()
-                                                    ? "Save failed"
+                                                    ? "Falha ao salvar"
                                                     : save_result.status_message);
         s_snapshot.last_error_code = save_result.error_code;
         s_snapshot.last_error_message = save_result.error_message;
@@ -850,7 +850,7 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         s_snapshot.phase = Phase::kComplete;
         s_snapshot.request_in_flight = false;
         s_snapshot.last_status_message = save_result.transcript_saved
-                                             ? "Transcript saved to SD"
+                                             ? "Transcrição salva no cartão SD"
                                              : kSavedWithoutTranscriptStatus;
         if (save_result.transcript_saved) {
             s_snapshot.last_error_code = save_result.error_code;
@@ -869,7 +869,7 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         s_snapshot.phase = s_snapshot.clip_saved ? Phase::kComplete : Phase::kFailed;
         s_snapshot.last_status_message = s_snapshot.clip_saved
                                              ? kSavedWithoutTranscriptStatus
-                                             : "Transcription failed";
+                                             : "Falha na transcrição";
         s_snapshot.last_error_code = event.snapshot.last_error_code;
         s_snapshot.last_error_message = event.snapshot.last_error_message;
         s_pending_recording_id.clear();

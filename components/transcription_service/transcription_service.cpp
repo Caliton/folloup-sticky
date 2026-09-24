@@ -68,9 +68,9 @@ void WorkerTask(void* raw_context)
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
         s_last_http_status = 0;
-        s_last_status_message = "Transcription failed";
+        s_last_status_message = "Falha na transcrição";
         s_last_error_code = "empty_audio";
-        s_last_error_message = "No recorded audio available";
+        s_last_error_message = "Nenhum áudio gravado disponível";
         s_last_transcript.clear();
         NotifyLocked();
         vTaskDelete(nullptr);
@@ -84,7 +84,7 @@ void WorkerTask(void* raw_context)
         s_request_in_flight = false;
         s_last_http_status = result.http_status;
         if (result.success) {
-            s_last_status_message = "Transcript ready";
+            s_last_status_message = "Transcrição pronta";
             s_last_error_code.clear();
             s_last_error_message.clear();
             s_last_transcript = result.transcript;
@@ -98,7 +98,7 @@ void WorkerTask(void* raw_context)
                      static_cast<unsigned long long>(result.upload_elapsed_ms),
                      static_cast<unsigned long long>(result.total_elapsed_ms));
         } else {
-            s_last_status_message = "Transcription failed";
+            s_last_status_message = "Falha na transcrição";
             s_last_error_code = result.error_code;
             s_last_error_message = result.error_message;
             s_last_transcript.clear();
@@ -124,8 +124,8 @@ esp_err_t Init()
     s_request_in_flight = false;
     s_last_http_status = 0;
     s_last_status_message = gemini_service::GetSnapshot().runtime.ready
-                                ? "Gemini ready for transcription"
-                                : "Gemini transcription unavailable";
+                                ? "Gemini pronto para transcrever"
+                                : "Transcrição do Gemini indisponível";
     s_last_error_code.clear();
     s_last_error_message.clear();
     s_last_transcript.clear();
@@ -157,29 +157,29 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         if (s_request_in_flight) {
-            s_last_status_message = "Transcription already running";
+            s_last_status_message = "Transcrição já em andamento";
             s_last_error_code = "request_in_flight";
-            s_last_error_message = "A transcription request is already running";
+            s_last_error_message = "Já há uma transcrição em andamento";
             NotifyLocked();
             return false;
         }
         if (!gemini_snapshot.runtime.ready || api_key.empty()) {
             s_last_http_status = 0;
-            s_last_status_message = "Transcription unavailable";
+            s_last_status_message = "Transcrição indisponível";
             s_last_error_code = gemini_snapshot.settings.configured ? "provider_not_ready"
                                                                     : "not_configured";
             s_last_error_message = gemini_snapshot.settings.configured
-                                       ? "Gemini is not ready yet"
-                                       : "No Gemini API key configured";
+                                       ? "Gemini ainda não está pronto"
+                                       : "Nenhuma chave de API do Gemini configurada";
             s_last_transcript.clear();
             NotifyLocked();
             return false;
         }
         if (!clip || clip->empty()) {
             s_last_http_status = 0;
-            s_last_status_message = "Transcription unavailable";
+            s_last_status_message = "Transcrição indisponível";
             s_last_error_code = "empty_audio";
-            s_last_error_message = "No recorded audio available";
+            s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
             NotifyLocked();
             return false;
@@ -187,7 +187,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
 
         s_request_in_flight = true;
         s_last_http_status = 0;
-        s_last_status_message = "Transcribing recording";
+        s_last_status_message = "Transcrevendo gravação";
         s_last_error_code.clear();
         s_last_error_message.clear();
         s_last_transcript.clear();
@@ -198,9 +198,9 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
     if (task_context == nullptr) {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
-        s_last_status_message = "Transcription unavailable";
+        s_last_status_message = "Transcrição indisponível";
         s_last_error_code = "task_context_alloc_failed";
-        s_last_error_message = "Failed to allocate transcription task context";
+        s_last_error_message = "Falha ao alocar memória para a transcrição";
         NotifyLocked();
         return false;
     }
@@ -214,9 +214,9 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
         delete task_context;
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
-        s_last_status_message = "Transcription unavailable";
+        s_last_status_message = "Transcrição indisponível";
         s_last_error_code = "task_start_failed";
-        s_last_error_message = "Failed to queue transcription task";
+        s_last_error_message = "Falha ao iniciar a tarefa de transcrição";
         NotifyLocked();
         return false;
     }

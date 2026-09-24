@@ -75,9 +75,16 @@ std::string TrimCopy(std::string value)
     return value;
 }
 
-const char* SegmentLabelForKind(SummaryKind kind)
+// User-facing label for toasts/status text (pt-BR).
+const char* DisplayLabelForKind(SummaryKind kind)
 {
-    return kind == SummaryKind::kTodos ? "Todos" : "Notes";
+    return kind == SummaryKind::kTodos ? "Tarefas" : "Notas";
+}
+
+// Lowercase noun used inside the Gemini prompt text (pt-BR).
+const char* PromptSubjectForKind(SummaryKind kind)
+{
+    return kind == SummaryKind::kTodos ? "tarefas" : "notas";
 }
 
 // Tag -> bucket mapping mirrors recording_archive_service: Task is a Todo; everything else
@@ -116,7 +123,7 @@ bool GeneratePromptTextResult(const std::string& prompt, std::string* text_out,
         }
         if (error_message_out != nullptr) {
             *error_message_out =
-                result.error_message.empty() ? "Gemini summary request failed" : result.error_message;
+                result.error_message.empty() ? "Falha na solicitação de resumo ao Gemini" : result.error_message;
         }
         return false;
     }
@@ -133,29 +140,34 @@ std::string BuildSummaryInstructionText(SummaryKind kind, bool intermediate)
     std::string text;
     if (kind == SummaryKind::kNotes) {
         text += intermediate
-                    ? "Summarize the notes captured within the available transcripts. Create a "
-                      "compact intermediate summary that faithfully captures the main themes, "
-                      "decisions, follow-ups, open questions, and ideas. Keep it factual, plain "
-                      "text, and easy to merge later. Avoid markdown tables.\n\n"
-                    : "Summarize the notes captured within the available transcripts. Create a "
-                      "summary capturing the main themes, decisions, follow-ups, open questions, "
-                      "and ideas in plain text. Keep it concise, and write it in an encouraging "
-                      "and optimistic tone so it feels insightful and motivating to look back on. "
-                      "Use short paragraphs and avoid markdown tables.\n\n";
+                    ? "Resuma as notas registradas nas transcrições disponíveis. Crie um resumo "
+                      "intermediário compacto que capture fielmente os temas principais, decisões, "
+                      "acompanhamentos, perguntas em aberto e ideias. Seja factual, use texto "
+                      "simples e facilite a junção posterior com outros resumos. Evite tabelas "
+                      "em markdown.\n\n"
+                    : "Resuma as notas registradas nas transcrições disponíveis. Crie um resumo "
+                      "em texto simples com os temas principais, decisões, acompanhamentos, "
+                      "perguntas em aberto e ideias. Seja conciso e escreva em um tom encorajador "
+                      "e otimista, para que seja revelador e motivador reler depois. Use "
+                      "parágrafos curtos e evite tabelas em markdown.\n\n";
     } else {
         text += intermediate
-                    ? "Summarize the todos captured within the available transcripts. Create a "
-                      "compact intermediate summary that faithfully captures the priorities, "
-                      "completed work, remaining tasks, and blockers, noting completion state when "
-                      "it is clear from the source. Keep it factual, plain text, and easy to merge "
-                      "later. Avoid markdown tables.\n\n"
-                    : "Summarize the todos captured within the available transcripts. Create a "
-                      "summary of the priorities, completed work, remaining tasks, and any "
-                      "blockers, noting completion state when it is clear from the source. Keep it "
-                      "concise and easy to skim, and write it in an encouraging and optimistic "
-                      "tone that celebrates progress and motivates the next steps. Avoid markdown "
-                      "tables.\n\n";
+                    ? "Resuma as tarefas registradas nas transcrições disponíveis. Crie um resumo "
+                      "intermediário compacto que capture fielmente as prioridades, o que já foi "
+                      "concluído, as tarefas pendentes e os impedimentos, indicando se cada item "
+                      "foi concluído quando isso estiver claro na fonte. Seja factual, use texto "
+                      "simples e facilite a junção posterior com outros resumos. Evite tabelas "
+                      "em markdown.\n\n"
+                    : "Resuma as tarefas registradas nas transcrições disponíveis. Crie um resumo "
+                      "das prioridades, do que já foi concluído, das tarefas pendentes e de "
+                      "eventuais impedimentos, indicando se cada item foi concluído quando isso "
+                      "estiver claro na fonte. Seja conciso e fácil de ler rapidamente, e escreva "
+                      "em um tom encorajador e otimista que celebre o progresso e motive os "
+                      "próximos passos. Evite tabelas em markdown.\n\n";
     }
+    // The transcripts may be in any language; the summary itself is always pt-BR.
+    text += "Escreva o resumo em português do Brasil, mesmo que as transcrições estejam em "
+            "outro idioma.\n\n";
     return text;
 }
 
@@ -164,13 +176,13 @@ void AppendSourceEntriesToPrompt(std::string* prompt, const std::vector<SourceEn
     if (prompt == nullptr) {
         return;
     }
-    prompt->append("Source entries:\n\n");
+    prompt->append("Registros de origem:\n\n");
     for (size_t index = 0; index < entries.size(); ++index) {
         const SourceEntry& entry = entries[index];
-        prompt->append("Entry ");
+        prompt->append("Registro ");
         prompt->append(std::to_string(index + 1));
         if (entry.part_count > 1) {
-            prompt->append(" (part ");
+            prompt->append(" (parte ");
             prompt->append(std::to_string(entry.part_index));
             prompt->append("/");
             prompt->append(std::to_string(entry.part_count));
@@ -178,16 +190,16 @@ void AppendSourceEntriesToPrompt(std::string* prompt, const std::vector<SourceEn
         }
         prompt->append(":\n");
         if (!entry.metadata.created_local_date.empty()) {
-            prompt->append("Date: ");
+            prompt->append("Data: ");
             prompt->append(entry.metadata.created_local_date);
             prompt->append("\n");
         }
         if (IsTodoRecordingTag(entry.metadata.tag)) {
-            prompt->append("Completed: ");
-            prompt->append(entry.metadata.completed ? "Yes" : "No");
+            prompt->append("Concluída: ");
+            prompt->append(entry.metadata.completed ? "Sim" : "Não");
             prompt->append("\n");
         }
-        prompt->append("Transcript:\n");
+        prompt->append("Transcrição:\n");
         prompt->append(entry.text);
         prompt->append("\n\n");
     }
@@ -199,9 +211,9 @@ std::string BuildPromptText(SummaryKind kind, const std::vector<SourceEntry>& en
     prompt.reserve(8192);
     prompt += BuildSummaryInstructionText(kind, false);
     AppendSourceEntriesToPrompt(&prompt, entries);
-    prompt += "Now write the final summary for the ";
-    prompt += SegmentLabelForKind(kind);
-    prompt += ". Put the summary only in the response.";
+    prompt += "Agora escreva o resumo final das ";
+    prompt += PromptSubjectForKind(kind);
+    prompt += ". Responda apenas com o resumo.";
     return prompt;
 }
 
@@ -212,14 +224,14 @@ std::string BuildChunkSummaryPrompt(SummaryKind kind, const std::vector<SourceEn
     prompt.reserve(8192);
     prompt += BuildSummaryInstructionText(kind, true);
     if (chunk_count > 1) {
-        prompt += "This is chunk ";
+        prompt += "Esta é a parte ";
         prompt += std::to_string(chunk_index);
-        prompt += " of ";
+        prompt += " de ";
         prompt += std::to_string(chunk_count);
         prompt += ".\n\n";
     }
     AppendSourceEntriesToPrompt(&prompt, entries);
-    prompt += "Now write only the compact intermediate summary for this chunk.";
+    prompt += "Agora escreva apenas o resumo intermediário compacto desta parte.";
     return prompt;
 }
 
@@ -229,16 +241,16 @@ std::string BuildRollupPrompt(SummaryKind kind, const std::vector<std::string>& 
     std::string prompt;
     prompt.reserve(4096);
     prompt += BuildSummaryInstructionText(kind, intermediate);
-    prompt += intermediate ? "Chunk summaries to merge:\n\n" : "Intermediate summaries:\n\n";
+    prompt += intermediate ? "Resumos parciais a combinar:\n\n" : "Resumos intermediários:\n\n";
     for (size_t index = 0; index < partial_summaries.size(); ++index) {
-        prompt += intermediate ? "Chunk summary " : "Intermediate summary ";
+        prompt += intermediate ? "Resumo parcial " : "Resumo intermediário ";
         prompt += std::to_string(index + 1);
         prompt += ":\n";
         prompt += partial_summaries[index];
         prompt += "\n\n";
     }
-    prompt += intermediate ? "Now write only one compact merged intermediate summary."
-                           : "Now write the final summary only in the response.";
+    prompt += intermediate ? "Agora escreva apenas um único resumo intermediário compacto que combine todos."
+                           : "Agora escreva o resumo final. Responda apenas com o resumo.";
     return prompt;
 }
 
@@ -404,7 +416,7 @@ bool GenerateRollupSummaryRecursive(SummaryKind kind,
             *error_code_out = "summary_empty";
         }
         if (error_message_out != nullptr) {
-            *error_message_out = "No intermediate summaries are available";
+            *error_message_out = "Nenhum resumo intermediário disponível";
         }
         return false;
     }
@@ -418,7 +430,7 @@ bool GenerateRollupSummaryRecursive(SummaryKind kind,
             *error_code_out = "summary_rollup_too_large";
         }
         if (error_message_out != nullptr) {
-            *error_message_out = "Summary rollup is still too large";
+            *error_message_out = "O resumo combinado ainda está grande demais";
         }
         return false;
     }
@@ -431,7 +443,7 @@ bool GenerateRollupSummaryRecursive(SummaryKind kind,
                 *error_code_out = "summary_rollup_split_failed";
             }
             if (error_message_out != nullptr) {
-                *error_message_out = "Summary rollup could not be split";
+                *error_message_out = "Não foi possível dividir o resumo combinado";
             }
             return false;
         }
@@ -752,7 +764,7 @@ GenerationResult GenerateChunkedSummary(SummaryKind kind, const std::vector<Sour
         std::vector<SourceEntry> fragments;
         if (!SplitEntryToFitTokenBudget(kind, entry, kSummaryChunkTokenBudget, &fragments)) {
             result.error_code = "summary_chunk_split_failed";
-            result.error_message = "Summary input could not be chunked";
+            result.error_message = "Não foi possível dividir o conteúdo do resumo";
             result.metadata = metadata;
             return result;
         }
@@ -764,7 +776,7 @@ GenerationResult GenerateChunkedSummary(SummaryKind kind, const std::vector<Sour
         BuildChunkGroups(kind, prepared_entries, kSummaryChunkTokenBudget, &chunks_valid);
     if (!chunks_valid || chunks.empty()) {
         result.error_code = "summary_chunk_failed";
-        result.error_message = "Summary input could not be chunked";
+        result.error_message = "Não foi possível dividir o conteúdo do resumo";
         result.metadata = metadata;
         return result;
     }
@@ -807,14 +819,14 @@ GenerationResult GenerateSummary(SummaryKind kind)
     const gemini_service::Snapshot gemini_snapshot = gemini_service::GetSnapshot();
     if (!gemini_snapshot.runtime.ready) {
         result.error_code = "gemini_not_ready";
-        result.error_message = "Gemini is not connected";
+        result.error_message = "Gemini não conectado";
         ESP_LOGW(kTag, "Summary aborted: Gemini not connected");
         return result;
     }
     if (gemini_service::GetEffectiveApiKey().empty() ||
         gemini_service::GetEffectiveModelName().empty()) {
         result.error_code = "gemini_not_configured";
-        result.error_message = "Gemini is not configured";
+        result.error_message = "Gemini não configurado";
         ESP_LOGW(kTag, "Summary aborted: Gemini not configured");
         return result;
     }
@@ -826,7 +838,7 @@ GenerationResult GenerateSummary(SummaryKind kind)
         // Distinct from "no recordings": the SD read failed, so we can't trust an
         // empty result. Surface it honestly instead of caching a bogus summary.
         result.error_code = "storage_read_failed";
-        result.error_message = "Couldn't read recordings from SD";
+        result.error_message = "Não foi possível ler as gravações do cartão SD";
         ESP_LOGW(kTag, "Summary aborted: SD read failed (%s)", esp_err_to_name(list_status));
         return result;
     }
@@ -845,7 +857,7 @@ GenerationResult GenerateSummary(SummaryKind kind)
     metadata.missing_transcript_item_count = missing_count;
     if (entries.empty()) {
         result.error_code = "no_summary_source";
-        result.error_message = "No transcribed recordings are available for this summary yet";
+        result.error_message = "Ainda não há gravações transcritas para este resumo";
         result.metadata = metadata;
         ESP_LOGW(kTag,
                  "Summary aborted: no transcribed source (items=%d transcribed=%d missing=%d)",
@@ -924,8 +936,8 @@ void CompleteSummaryRequest(SummaryKind kind, const GenerationResult& result)
     s_snapshot.request.kind = kind;
     s_snapshot.request.phase = result.success ? RequestPhase::kSucceeded : RequestPhase::kFailed;
     s_snapshot.request.status_message =
-        result.success ? std::string(SegmentLabelForKind(kind)) + " summary updated"
-                       : std::string("Unable to summarize ") + SegmentLabelForKind(kind);
+        result.success ? std::string("Resumo de ") + DisplayLabelForKind(kind) + " atualizado"
+                       : std::string("Não foi possível resumir ") + DisplayLabelForKind(kind);
     s_snapshot.request.error_code = result.error_code;
     s_snapshot.request.error_message = result.error_message;
     ++s_snapshot.request_generation;
@@ -951,7 +963,7 @@ void ProcessSummaryRequest(SummaryKind kind)
     if (result.success && !PersistSummary(kind, result)) {
         result.success = false;
         result.error_code = "summary_save_failed";
-        result.error_message = "Unable to save summary to SD card";
+        result.error_message = "Não foi possível salvar o resumo no cartão SD";
     }
     CompleteSummaryRequest(kind, result);
 }
@@ -1058,7 +1070,7 @@ bool RequestSummary(SummaryKind kind)
         s_snapshot.request.in_flight = true;
         s_snapshot.request.kind = kind;
         s_snapshot.request.phase = RequestPhase::kStarted;
-        s_snapshot.request.status_message = std::string("Summarizing ") + SegmentLabelForKind(kind);
+        s_snapshot.request.status_message = std::string("Resumindo ") + DisplayLabelForKind(kind);
         s_snapshot.request.error_code.clear();
         s_snapshot.request.error_message.clear();
         ++s_snapshot.request_generation;
@@ -1074,9 +1086,9 @@ bool RequestSummary(SummaryKind kind)
     std::lock_guard<std::mutex> lock(s_mutex);
     s_snapshot.request.in_flight = false;
     s_snapshot.request.phase = RequestPhase::kFailed;
-    s_snapshot.request.status_message = "Unable to queue summary request";
+    s_snapshot.request.status_message = "Não foi possível iniciar o resumo";
     s_snapshot.request.error_code = "queue_full";
-    s_snapshot.request.error_message = "Unable to queue summary request";
+    s_snapshot.request.error_message = "Não foi possível iniciar o resumo";
     ++s_snapshot.request_generation;
     NotifyLocked();
     return false;

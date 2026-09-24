@@ -746,7 +746,7 @@ esp_err_t HandlePortalStatus(httpd_req_t* request)
     const ScanSnapshot snapshot = GetScanSnapshot();
     return SendJsonResponse(request, 200,
                             BuildStatusJson(ui_state, &snapshot, true,
-                                            ui_state.connected ? "Connected" : "Not connected",
+                                            ui_state.connected ? "Conectado" : "Não conectado",
                                             true));
 }
 
@@ -757,23 +757,23 @@ esp_err_t HandlePortalScan(httpd_req_t* request)
     if (snapshot.state == ScanState::kRunning) {
         return SendJsonResponse(request, 200,
                                 BuildStatusJson(ui_state, &snapshot, true,
-                                                "Scanning for networks", true));
+                                                "Procurando redes", true));
     }
     if (snapshot.state == ScanState::kComplete) {
         return SendJsonResponse(request, 200,
                                 BuildStatusJson(ui_state, &snapshot, true,
-                                                "Network scan complete", true));
+                                                "Busca de redes concluída", true));
     }
     if (!StartNetworkScan()) {
         return SendJsonResponse(request, 500,
                                 BuildStatusJson(ui_state, nullptr, true,
-                                                "Scan failed", false));
+                                                "Falha na busca de redes", false));
     }
     const UiState running_ui_state = GetUiState();
     const ScanSnapshot running_snapshot = GetScanSnapshot();
     return SendJsonResponse(request, 200,
                             BuildStatusJson(running_ui_state, &running_snapshot, true,
-                                            "Scanning for networks", true));
+                                            "Procurando redes", true));
 }
 
 esp_err_t HandlePortalConfigure(httpd_req_t* request)
@@ -783,7 +783,7 @@ esp_err_t HandlePortalConfigure(httpd_req_t* request)
         request->content_len > static_cast<int>(kMaxPortalPayloadLen)) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "Invalid Wi-Fi configuration payload");
+        cJSON_AddStringToObject(root, "message", "Configuração de Wi-Fi inválida");
         return SendJsonResponse(request, 400, root);
     }
 
@@ -795,7 +795,7 @@ esp_err_t HandlePortalConfigure(httpd_req_t* request)
         if (root == nullptr) {
             cJSON* error = cJSON_CreateObject();
             cJSON_AddBoolToObject(error, "success", false);
-            cJSON_AddStringToObject(error, "message", "Invalid JSON body");
+            cJSON_AddStringToObject(error, "message", "Corpo JSON inválido");
             return SendJsonResponse(request, 400, error);
         }
         cJSON* ssid_item = cJSON_GetObjectItemCaseSensitive(root, "ssid");
@@ -822,20 +822,20 @@ esp_err_t HandlePortalConfigure(httpd_req_t* request)
     if (ssid.empty()) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "SSID required");
+        cJSON_AddStringToObject(root, "message", "SSID obrigatório");
         return SendJsonResponse(request, 400, root);
     }
 
     if (!ConnectToNetwork(ssid, password, true)) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "Failed to start Wi-Fi connection");
+        cJSON_AddStringToObject(root, "message", "Falha ao iniciar a conexão Wi-Fi");
         return SendJsonResponse(request, 500, root);
     }
 
     cJSON* root = cJSON_CreateObject();
     cJSON_AddBoolToObject(root, "success", true);
-    const std::string message = "Connecting to " + ssid;
+    const std::string message = "Conectando a " + ssid;
     cJSON_AddStringToObject(root, "message", message.c_str());
     cJSON_AddStringToObject(root, "ssid", ssid.c_str());
     return SendJsonResponse(request, 200, root);
@@ -848,15 +848,15 @@ esp_err_t HandlePortalDisconnect(httpd_req_t* request)
     if (!DisconnectFromNetwork(true)) {
         cJSON* root = cJSON_CreateObject();
         cJSON_AddBoolToObject(root, "success", false);
-        cJSON_AddStringToObject(root, "message", "Failed to disconnect Wi-Fi");
+        cJSON_AddStringToObject(root, "message", "Falha ao desconectar o Wi-Fi");
         return SendJsonResponse(request, 500, root);
     }
 
     cJSON* root = cJSON_CreateObject();
     cJSON_AddBoolToObject(root, "success", true);
     const std::string message =
-        was_connected ? "Disconnected and cleared credentials for " + previous.ssid
-                      : "Cleared saved Wi-Fi credentials";
+        was_connected ? "Desconectado de " + previous.ssid + " e credenciais apagadas"
+                      : "Credenciais de Wi-Fi apagadas";
     cJSON_AddStringToObject(root, "message", message.c_str());
     return SendJsonResponse(request, 200, root);
 }
