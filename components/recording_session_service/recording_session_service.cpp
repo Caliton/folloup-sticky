@@ -259,6 +259,9 @@ void PlaybackWorker(void* arg)
             ESP_LOGW(kTag, "Clip playback failed: %s", esp_err_to_name(err));
         }
     }
+    // Drop our clip reference before self-deleting: vTaskDelete(nullptr) never returns, so
+    // the unique_ptr destructor would never run and the whole take would leak in PSRAM.
+    clip.reset();
     s_playback_worker_active.store(false, std::memory_order_release);
     AdvanceToTagSelection("playback finished");
     vTaskDelete(nullptr);

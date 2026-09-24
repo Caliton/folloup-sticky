@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <deque>
+#include <iterator>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -99,6 +100,11 @@ bool s_reconnecting = false;
 // association; see kMaxReconnectAttempts.
 int s_reconnect_attempts = 0;
 bool s_reconnect_suspended = false;
+// True while the loop stood down only because the fast attempts ran out (router rebooting,
+// out of range). In that state a slow backoff timer keeps retrying; any other reason for
+// standing down (user disconnect, scan preemption) clears it and the timer stays idle.
+bool s_suspended_by_exhaustion = false;
+int s_slow_retry_index = 0;
 bool s_persist_active_credentials_on_success = false;
 bool s_clear_saved_credentials_on_disconnect = true;
 int s_rssi = 0;
@@ -131,6 +137,8 @@ QueueHandle_t s_transition_queue = nullptr;
 TaskHandle_t s_transition_task = nullptr;
 TaskHandle_t s_callback_task = nullptr;
 esp_timer_handle_t s_connect_timer = nullptr;
+esp_timer_handle_t s_slow_retry_timer = nullptr;
+constexpr uint32_t kSlowRetryDelaysSec[] = {30, 60, 120, 300};
 esp_timer_handle_t s_scan_timeout_timer = nullptr;
 esp_netif_t* s_sta_netif = nullptr;
 esp_netif_t* s_ap_netif = nullptr;
@@ -955,6 +963,7 @@ void StartConfigPortal()
 
 void HandleWifiEvent(int32_t event_id, void* event_data);
 void HandleIpEvent(int32_t event_id, void* event_data);
+uint32_t ScheduleSlowRetry();
 void StartStationAttempt(bool allow_ap_fallback);
 void TransitionWorker(void*);
 
@@ -1067,6 +1076,39 @@ void OnScanTimeout(void* arg)
     }
 }
 
+// Runtime Wi-Fi transitions must degrade, not reboot: a transient esp_wifi_* failure
+// (ESP_ERR_NO_MEM under memory pressure, a state race) used to ESP_ERROR_CHECK-abort and
+// lose any unsaved recording. Log it, report disconnected and let the slow backoff retry.
+void HandleTransitionFailure(const char* operation, esp_err_t err)
+{
+    ESP_LOGE(kTag, "Wi-Fi transition step %s failed: %s", operation, esp_err_to_name(err));
+    if (s_connect_timer != nullptr) {
+        esp_timer_stop(s_connect_timer);
+    }
+    {
+        std::lock_guard<std::mutex> lock(s_state_mutex);
+        s_suppress_disconnect_event = false;
+        s_connect_timer_active = false;
+        s_reconnecting = false;
+        s_connected = false;
+        s_ip_address.clear();
+        s_rssi = 0;
+        s_reconnect_suspended = true;
+        s_suspended_by_exhaustion = true;
+    }
+    Notify(State::kDisconnected, "WIFI_ERROR");
+    (void)ScheduleSlowRetry();
+}
+
+#define WIFI_TRY(expr)                                     \
+    do {                                                   \
+        const esp_err_t wifi_try_err_ = (expr);            \
+        if (wifi_try_err_ != ESP_OK) {                     \
+            HandleTransitionFailure(#expr, wifi_try_err_); \
+            return;                                        \
+        }                                                  \
+    } while (0)
+
 void StopWifiNow()
 {
     ResolveInFlightScan(ESP_ERR_INVALID_STATE);
@@ -1087,7 +1129,7 @@ void StopWifiNow()
     if (s_stack_initialized) {
         esp_err_t err = esp_wifi_stop();
         if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
-            ESP_ERROR_CHECK(err);
+            WIFI_TRY(err);
         }
     }
 
@@ -1141,11 +1183,11 @@ void EnterAccessPointModeNow()
 
     esp_err_t err = esp_wifi_stop();
     if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
-        ESP_ERROR_CHECK(err);
+        WIFI_TRY(err);
     }
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    WIFI_TRY(esp_wifi_set_mode(WIFI_MODE_AP));
+    WIFI_TRY(esp_wifi_set_config(WIFI_IF_AP, &config));
+    WIFI_TRY(esp_wifi_start());
 
     {
         std::lock_guard<std::mutex> lock(s_state_mutex);
@@ -1201,15 +1243,15 @@ void StartStationAttempt(bool allow_ap_fallback)
 
         esp_err_t err = esp_wifi_stop();
         if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
-            ESP_ERROR_CHECK(err);
+            WIFI_TRY(err);
         }
-        ESP_ERROR_CHECK(esp_wifi_set_mode(access_point_mode ? WIFI_MODE_AP : WIFI_MODE_STA));
+        WIFI_TRY(esp_wifi_set_mode(access_point_mode ? WIFI_MODE_AP : WIFI_MODE_STA));
         if (access_point_mode) {
             wifi_config_t ap_config = {};
             ConfigureAccessPointConfig(ap_ssid, &ap_config);
-            ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+            WIFI_TRY(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
         }
-        ESP_ERROR_CHECK(esp_wifi_start());
+        WIFI_TRY(esp_wifi_start());
 
         {
             std::lock_guard<std::mutex> lock(s_state_mutex);
@@ -1253,14 +1295,14 @@ void StartStationAttempt(bool allow_ap_fallback)
 
     esp_err_t err = esp_wifi_stop();
     if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
-        ESP_ERROR_CHECK(err);
+        WIFI_TRY(err);
     }
-    ESP_ERROR_CHECK(esp_wifi_set_mode(access_point_mode ? WIFI_MODE_APSTA : WIFI_MODE_STA));
+    WIFI_TRY(esp_wifi_set_mode(access_point_mode ? WIFI_MODE_APSTA : WIFI_MODE_STA));
     if (access_point_mode) {
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
+        WIFI_TRY(esp_wifi_set_config(WIFI_IF_AP, &ap_config));
     }
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &station_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    WIFI_TRY(esp_wifi_set_config(WIFI_IF_STA, &station_config));
+    WIFI_TRY(esp_wifi_start());
 
     {
         std::lock_guard<std::mutex> lock(s_state_mutex);
@@ -1275,8 +1317,8 @@ void StartStationAttempt(bool allow_ap_fallback)
         StartConfigPortal();
     }
     Notify(State::kConnecting, credentials.ssid);
-    ESP_ERROR_CHECK(esp_timer_start_once(s_connect_timer, kConnectTimeoutSec * 1000000ULL));
-    ESP_ERROR_CHECK(esp_wifi_connect());
+    WIFI_TRY(esp_timer_start_once(s_connect_timer, kConnectTimeoutSec * 1000000ULL));
+    WIFI_TRY(esp_wifi_connect());
 }
 
 void DisconnectStationNow(bool clear_saved_credentials)
@@ -1292,6 +1334,7 @@ void DisconnectStationNow(bool clear_saved_credentials)
         // the loop down here is deterministic; s_suppress_disconnect_event alone is not,
         // since STA_DISCONNECTED is delivered asynchronously on the event loop task.
         s_reconnect_suspended = true;
+        s_suspended_by_exhaustion = false;
         s_reconnect_attempts = 0;
     }
 
@@ -1580,6 +1623,7 @@ void HandleWifiEvent(int32_t event_id, void* event_data)
                     // burns the radio. Stand down and wait for user intent -- a connect,
                     // a scan, or a Wi-Fi toggle -- to re-arm the loop.
                     s_reconnect_suspended = true;
+                    s_suspended_by_exhaustion = true;
                     attempts_exhausted = true;
                 } else if (eligible) {
                     ++s_reconnect_attempts;
@@ -1598,11 +1642,12 @@ void HandleWifiEvent(int32_t event_id, void* event_data)
                        : (event != nullptr ? DisconnectReasonToString(event->reason)
                                            : "DISCONNECTED"));
             if (attempts_exhausted) {
+                const uint32_t delay_s = ScheduleSlowRetry();
                 ESP_LOGW(kTag,
-                         "Wi-Fi reconnect gave up after %d attempts to ssid=%s; waiting "
-                         "for a scan, connect or Wi-Fi toggle",
+                         "Wi-Fi reconnect: %d fast attempts to ssid=%s failed; retrying in %lus",
                          kMaxReconnectAttempts,
-                         reconnect_ssid.empty() ? "<unknown>" : reconnect_ssid.c_str());
+                         reconnect_ssid.empty() ? "<unknown>" : reconnect_ssid.c_str(),
+                         static_cast<unsigned long>(delay_s));
             } else if (should_reconnect) {
                 ESP_LOGI(kTag,
                          "Wi-Fi disconnected; scheduling reconnect %d/%d to ssid=%s",
@@ -1616,6 +1661,58 @@ void HandleWifiEvent(int32_t event_id, void* event_data)
             }
         }
     }
+}
+
+// Slow reconnect after the fast attempts are exhausted: re-arm the loop for one more
+// attempt. A failure lands back in STA_DISCONNECTED with attempts at the limit, which
+// stands down again and schedules the next, longer delay.
+void OnSlowRetryTimer(void*)
+{
+    bool retry = false;
+    {
+        std::lock_guard<std::mutex> lock(s_state_mutex);
+        retry = s_wifi_enabled && !s_connected && !s_access_point_mode &&
+                s_reconnect_suspended && s_suspended_by_exhaustion &&
+                ResolveStationCredentialsLocked().valid();
+        if (retry) {
+            s_reconnect_suspended = false;
+            s_suspended_by_exhaustion = false;
+            s_reconnect_attempts = kMaxReconnectAttempts - 1;
+            s_reconnecting = true;
+        }
+    }
+    if (!retry) {
+        return;
+    }
+    ESP_LOGI(kTag, "Wi-Fi slow reconnect attempt");
+    if (!QueueTransition(TransitionRequest::kStartStation)) {
+        std::lock_guard<std::mutex> lock(s_state_mutex);
+        s_reconnecting = false;
+        s_reconnect_suspended = true;
+        s_suspended_by_exhaustion = true;
+    }
+}
+
+uint32_t ScheduleSlowRetry()
+{
+    int index = 0;
+    {
+        std::lock_guard<std::mutex> lock(s_state_mutex);
+        index = s_slow_retry_index;
+        if (s_slow_retry_index + 1 < static_cast<int>(std::size(kSlowRetryDelaysSec))) {
+            ++s_slow_retry_index;
+        }
+    }
+    const uint32_t delay_s = kSlowRetryDelaysSec[index];
+    if (s_slow_retry_timer != nullptr) {
+        esp_timer_stop(s_slow_retry_timer);  // ESP_ERR_INVALID_STATE when idle is fine
+        const esp_err_t err =
+            esp_timer_start_once(s_slow_retry_timer, static_cast<uint64_t>(delay_s) * 1000000ULL);
+        if (err != ESP_OK) {
+            ESP_LOGW(kTag, "Slow reconnect timer start failed: %s", esp_err_to_name(err));
+        }
+    }
+    return delay_s;
 }
 
 void HandleIpEvent(int32_t event_id, void* event_data)
@@ -1643,6 +1740,8 @@ void HandleIpEvent(int32_t event_id, void* event_data)
         s_reconnecting = false;
         s_reconnect_attempts = 0;
         s_reconnect_suspended = false;
+        s_suspended_by_exhaustion = false;
+        s_slow_retry_index = 0;
         s_connected = true;
         s_ip_address = ip_address;
         s_rssi = rssi;
@@ -1687,6 +1786,15 @@ esp_err_t Init()
         .skip_unhandled_events = true,
     };
     ESP_ERROR_CHECK(esp_timer_create(&scan_timer_args, &s_scan_timeout_timer));
+
+    esp_timer_create_args_t slow_retry_args = {
+        .callback = OnSlowRetryTimer,
+        .arg = nullptr,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "wifi_slow_retry",
+        .skip_unhandled_events = true,
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&slow_retry_args, &s_slow_retry_timer));
 
     s_transition_queue = xQueueCreate(kTransitionQueueDepth, sizeof(TransitionRequest));
     if (s_transition_queue == nullptr) {
@@ -1757,6 +1865,8 @@ void SetWifiEnabled(bool enabled)
         s_wifi_enabled = enabled;
         s_reconnect_attempts = 0;
         s_reconnect_suspended = false;
+        s_suspended_by_exhaustion = false;
+        s_slow_retry_index = 0;
     }
     QueueTransition(enabled ? TransitionRequest::kStart : TransitionRequest::kStopWifi);
 }
@@ -1771,6 +1881,8 @@ void SetAccessPointEnabled(bool enabled)
         }
         s_reconnect_attempts = 0;
         s_reconnect_suspended = false;
+        s_suspended_by_exhaustion = false;
+        s_slow_retry_index = 0;
     }
     QueueTransition(enabled ? TransitionRequest::kEnterAccessPoint
                             : TransitionRequest::kDisableAccessPoint);
@@ -1795,6 +1907,8 @@ bool ConnectToNetwork(const std::string& ssid, const std::string& password, bool
         s_current_ssid = ssid;
         s_reconnect_attempts = 0;
         s_reconnect_suspended = false;
+        s_suspended_by_exhaustion = false;
+        s_slow_retry_index = 0;
     }
 
     return QueueTransition(TransitionRequest::kStartStation);
@@ -1833,6 +1947,7 @@ bool StartNetworkScan()
         preempt_connection = !s_connected;
         if (preempt_connection) {
             s_reconnect_suspended = true;
+            s_suspended_by_exhaustion = false;
             s_reconnecting = false;
         }
         s_scan_snapshot.state = ScanState::kRunning;

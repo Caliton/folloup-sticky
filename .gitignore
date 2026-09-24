@@ -44,7 +44,6 @@ build/
 Build/
 build-*/
 managed_components/
-dependencies.lock
 
 # ESP-IDF generated files
 # sdkconfig is regenerated from sdkconfig.defaults on every build, and menuconfig writes
@@ -87,3 +86,6 @@ Testing/
 # Python bytecode cache
 __pycache__/
 *.pyc
+
+# macOS Finder metadata
+.DS_Store

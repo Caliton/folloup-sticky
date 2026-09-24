@@ -4,6 +4,7 @@
 #include <array>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -266,7 +267,9 @@ Snapshot BuildSnapshotLocked()
     snapshot.settings.model_name = kDefaultModelName;
 
     snapshot.runtime.initialized = s_initialized;
-    snapshot.runtime.ready = configured && s_authenticated;
+    // Not ready while offline: callers would otherwise start a transcription that fails
+    // immediately and leaves the recording without a transcript.
+    snapshot.runtime.ready = configured && s_authenticated && s_network_connected;
     snapshot.runtime.request_in_flight = s_request_in_flight;
     snapshot.runtime.auth_checked = s_auth_checked;
     snapshot.runtime.authenticated = s_authenticated;
@@ -507,7 +510,9 @@ void AuthenticationTask(void* arg)
     }
 
     const AuthResult result = Authenticate(context->api_key, context->model_name);
-    CompleteAuthentication(context->generation, result);
+    const uint32_t generation = context->generation;
+    context.reset();  // vTaskDelete(nullptr) never returns, so release RAII owners first
+    CompleteAuthentication(generation, result);
     vTaskDelete(nullptr);
 }
 
@@ -741,8 +746,8 @@ esp_err_t HandlePortalRuntimeGet(httpd_req_t* request)
 }
 
 // Synchronous JSON POST to a Gemini endpoint (generateContent / countTokens).
-HttpResponse PerformGeminiPost(const std::string& url, const std::string& api_key,
-                               const std::string& body)
+HttpResponse PerformGeminiPostOnce(const std::string& url, const std::string& api_key,
+                                   const std::string& body)
 {
     HttpResponse response = {};
 
@@ -774,6 +779,58 @@ HttpResponse PerformGeminiPost(const std::string& url, const std::string& api_ke
     if (err != ESP_OK) {
         response.error_code = "transport_error";
         response.error_message = esp_err_to_name(err);
+    }
+    return response;
+}
+
+constexpr int kMaxPostAttempts = 3;
+constexpr uint32_t kMaxRetryDelayMs = 30000;
+
+// Free-tier Gemini regularly answers 429 (per-minute quota) and 503 (model overloaded);
+// both clear within seconds. A daily quota does not, so it is not retried.
+bool IsRetryableResponse(const HttpResponse& response)
+{
+    if (response.error_code == "transport_error") {
+        return true;
+    }
+    const int status = response.status_code;
+    if (status != 429 && status != 500 && status != 502 && status != 503 && status != 504) {
+        return false;
+    }
+    return response.body.find("PerDay") == std::string::npos;
+}
+
+// Honors google.rpc.RetryInfo ("retryDelay": "37s") when present, else exponential backoff.
+uint32_t RetryDelayMs(const HttpResponse& response, int attempt)
+{
+    uint32_t delay_ms = 2000U << attempt;
+    const size_t key = response.body.find("\"retryDelay\"");
+    if (key != std::string::npos) {
+        const size_t quote = response.body.find('"', response.body.find(':', key) + 1);
+        if (quote != std::string::npos) {
+            const double seconds = std::atof(response.body.c_str() + quote + 1);
+            if (seconds > 0) {
+                delay_ms = static_cast<uint32_t>(seconds * 1000.0) + 250U;
+            }
+        }
+    }
+    return std::min(delay_ms, kMaxRetryDelayMs);
+}
+
+HttpResponse PerformGeminiPost(const std::string& url, const std::string& api_key,
+                               const std::string& body)
+{
+    HttpResponse response = {};
+    for (int attempt = 0; attempt < kMaxPostAttempts; ++attempt) {
+        response = PerformGeminiPostOnce(url, api_key, body);
+        if (attempt + 1 == kMaxPostAttempts || !IsRetryableResponse(response)) {
+            break;
+        }
+        const uint32_t delay_ms = RetryDelayMs(response, attempt);
+        ESP_LOGW(kTag, "Gemini POST http=%d code=%s; retry %d/%d in %lums",
+                 response.status_code, response.error_code.c_str(), attempt + 1,
+                 kMaxPostAttempts - 1, static_cast<unsigned long>(delay_ms));
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
     return response;
 }
@@ -1588,10 +1645,15 @@ bool BeginAuthentication()
 
 void SetNetworkState(bool connected, bool access_point_mode)
 {
+    bool connectivity_changed = false;
     {
         std::lock_guard<std::mutex> lock(s_mutex);
+        connectivity_changed = s_network_connected != connected;
         s_network_connected = connected;
         s_access_point_mode = access_point_mode;
+    }
+    if (connectivity_changed) {
+        Notify();  // `ready` depends on connectivity
     }
     MaybeBeginAuthentication();
 }

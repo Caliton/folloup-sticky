@@ -46,18 +46,35 @@ Snapshot BuildSnapshotLocked()
     return snapshot;
 }
 
-void NotifyLocked()
-{
-    EventHandler handler = s_event_handler;
-    void* context = s_event_context;
-    if (handler == nullptr) {
-        return;
+// Captures the event while s_mutex is held and delivers it after the lock is released.
+// Declare it *before* the lock_guard so its destructor runs after the unlock: the handler
+// chain (app_shell -> recording_session_service) takes the session mutex, and the session
+// calls GetSnapshot() here while holding it, so notifying under s_mutex could deadlock.
+class ScopedNotify {
+public:
+    ScopedNotify() = default;
+    ScopedNotify(const ScopedNotify&) = delete;
+    ScopedNotify& operator=(const ScopedNotify&) = delete;
+
+    ~ScopedNotify()
+    {
+        if (handler_ != nullptr) {
+            handler_(event_, context_);
+        }
     }
-    const Event event = {
-        .snapshot = BuildSnapshotLocked(),
-    };
-    handler(event, context);
-}
+
+    void ArmLocked()
+    {
+        handler_ = s_event_handler;
+        context_ = s_event_context;
+        event_ = {.snapshot = BuildSnapshotLocked()};
+    }
+
+private:
+    EventHandler handler_ = nullptr;
+    void* context_ = nullptr;
+    Event event_ = {};
+};
 
 // Runs the (blocking) Gemini audio transcription and publishes the result. The Gemini HTTP now
 // lives in gemini_service::Transcribe; this service owns the async lifecycle + snapshot/events.
@@ -65,14 +82,20 @@ void WorkerTask(void* raw_context)
 {
     std::unique_ptr<TaskContext> context(static_cast<TaskContext*>(raw_context));
     if (!context || !context->clip || context->clip->empty()) {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_request_in_flight = false;
-        s_last_http_status = 0;
-        s_last_status_message = "Falha na transcrição";
-        s_last_error_code = "empty_audio";
-        s_last_error_message = "Nenhum áudio gravado disponível";
-        s_last_transcript.clear();
-        NotifyLocked();
+        {
+            ScopedNotify notify;
+            std::lock_guard<std::mutex> lock(s_mutex);
+            s_request_in_flight = false;
+            s_last_http_status = 0;
+            s_last_status_message = "Falha na transcrição";
+            s_last_error_code = "empty_audio";
+            s_last_error_message = "Nenhum áudio gravado disponível";
+            s_last_transcript.clear();
+            notify.ArmLocked();
+        }
+        // vTaskDelete(nullptr) never returns: every RAII owner (mutex, context) must already
+        // be released, or the mutex stays locked forever.
+        context.reset();
         vTaskDelete(nullptr);
         return;
     }
@@ -80,6 +103,7 @@ void WorkerTask(void* raw_context)
     const gemini_service::TranscriptionResult result = gemini_service::Transcribe(*context->clip);
 
     {
+        ScopedNotify notify;
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
         s_last_http_status = result.http_status;
@@ -105,9 +129,10 @@ void WorkerTask(void* raw_context)
             ESP_LOGW(kTag, "Gemini transcription failed: http=%d code=%s message=%s",
                      result.http_status, s_last_error_code.c_str(), s_last_error_message.c_str());
         }
-        NotifyLocked();
+        notify.ArmLocked();
     }
 
+    context.reset();
     vTaskDelete(nullptr);
 }
 
@@ -155,12 +180,13 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
     const std::string api_key = gemini_service::GetEffectiveApiKey();
 
     {
+        ScopedNotify notify;
         std::lock_guard<std::mutex> lock(s_mutex);
         if (s_request_in_flight) {
             s_last_status_message = "Transcrição já em andamento";
             s_last_error_code = "request_in_flight";
             s_last_error_message = "Já há uma transcrição em andamento";
-            NotifyLocked();
+            notify.ArmLocked();
             return false;
         }
         if (!gemini_snapshot.runtime.ready || api_key.empty()) {
@@ -172,7 +198,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
                                        ? "Gemini ainda não está pronto"
                                        : "Nenhuma chave de API do Gemini configurada";
             s_last_transcript.clear();
-            NotifyLocked();
+            notify.ArmLocked();
             return false;
         }
         if (!clip || clip->empty()) {
@@ -181,7 +207,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
             s_last_error_code = "empty_audio";
             s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
-            NotifyLocked();
+            notify.ArmLocked();
             return false;
         }
 
@@ -191,17 +217,18 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
         s_last_error_code.clear();
         s_last_error_message.clear();
         s_last_transcript.clear();
-        NotifyLocked();
+        notify.ArmLocked();
     }
 
     TaskContext* task_context = new (std::nothrow) TaskContext();
     if (task_context == nullptr) {
+        ScopedNotify notify;
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
         s_last_status_message = "Transcrição indisponível";
         s_last_error_code = "task_context_alloc_failed";
         s_last_error_message = "Falha ao alocar memória para a transcrição";
-        NotifyLocked();
+        notify.ArmLocked();
         return false;
     }
     task_context->clip = std::move(clip);
@@ -212,12 +239,13 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
         followup_task_config::kPriorityGemini, &task, followup_task_config::kSystemCore);
     if (created != pdPASS) {
         delete task_context;
+        ScopedNotify notify;
         std::lock_guard<std::mutex> lock(s_mutex);
         s_request_in_flight = false;
         s_last_status_message = "Transcrição indisponível";
         s_last_error_code = "task_start_failed";
         s_last_error_message = "Falha ao iniciar a tarefa de transcrição";
-        NotifyLocked();
+        notify.ArmLocked();
         return false;
     }
 

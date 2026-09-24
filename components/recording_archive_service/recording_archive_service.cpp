@@ -15,6 +15,7 @@
 
 #include "cJSON.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "esp_timer.h"
 #include "followup_task_config.h"
 #include "freertos/FreeRTOS.h"
@@ -138,9 +139,14 @@ void LogFileStat(const char* label, const std::string& path)
 
 std::string GenerateRecordingId()
 {
+    // Prefer wall-clock seconds: uptime restarts at every boot, so uptime-based IDs repeat
+    // across reboots and sort out of order. The low part adds randomness either way.
+    const int64_t wall_s = static_cast<int64_t>(time(nullptr));
     const int64_t now_us = esp_timer_get_time();
-    const int64_t now_s = now_us / 1000000LL;
-    const uint32_t micros_part = static_cast<uint32_t>(now_us % 1000000LL);
+    const int64_t now_s = wall_s >= kMinValidEpoch ? wall_s : now_us / 1000000LL;
+    const uint32_t micros_part = wall_s >= kMinValidEpoch
+                                     ? static_cast<uint32_t>(esp_random() % 1000000U)
+                                     : static_cast<uint32_t>(now_us % 1000000LL);
 
     char buffer[48] = {};
     std::snprintf(buffer,
@@ -196,30 +202,85 @@ WavHeader BuildWavHeader(const recording_service::RecordedClip& clip)
     return header;
 }
 
+constexpr const char* kTempSuffix = ".tmp";
+
+// Crash-safe replace: write `<path>.tmp`, fsync it, then swap it in. FATFS rename() does not
+// overwrite, so the old file is removed first; a power cut in that window leaves only the
+// complete .tmp, which RecoverInterruptedWrites() promotes on the next scan. Before this a
+// plain "wb" truncated the metadata first, and a cut mid-write made the recording vanish.
 bool WriteFileBytes(const std::string& path, const void* data, size_t size)
 {
+    const std::string temp_path = path + kTempSuffix;
     errno = 0;
-    FILE* file = std::fopen(path.c_str(), "wb");
+    FILE* file = std::fopen(temp_path.c_str(), "wb");
     if (file == nullptr) {
         ESP_LOGW(kTag,
                  "Open file for write failed: %s errno=%d (%s)",
-                 path.c_str(),
+                 temp_path.c_str(),
                  errno,
                  std::strerror(errno));
         return false;
     }
 
-    const bool ok = size == 0 || std::fwrite(data, 1, size, file) == size;
+    bool ok = size == 0 || std::fwrite(data, 1, size, file) == size;
+    ok = ok && std::fflush(file) == 0 && fsync(fileno(file)) == 0;
     const int write_errno = errno;
     std::fclose(file);
     if (!ok) {
         ESP_LOGW(kTag,
                  "Write file failed: %s errno=%d (%s)",
-                 path.c_str(),
+                 temp_path.c_str(),
                  write_errno,
                  std::strerror(write_errno));
+        std::remove(temp_path.c_str());
+        return false;
     }
-    return ok;
+
+    struct stat existing = {};
+    if (stat(path.c_str(), &existing) == 0 && std::remove(path.c_str()) != 0) {
+        ESP_LOGW(kTag, "Replace failed removing %s errno=%d", path.c_str(), errno);
+        std::remove(temp_path.c_str());
+        return false;
+    }
+    if (std::rename(temp_path.c_str(), path.c_str()) != 0) {
+        ESP_LOGW(kTag, "Replace failed renaming %s errno=%d", temp_path.c_str(), errno);
+        return false;  // the .tmp is complete; RecoverInterruptedWrites() finishes the swap
+    }
+    return true;
+}
+
+// Finishes swaps interrupted by a power cut (see WriteFileBytes). Runs as its own pass so
+// the directory is never modified while a readdir() over it is in progress.
+void RecoverInterruptedWrites(const std::string& directory)
+{
+    std::vector<std::string> temp_names;
+    DIR* dir = opendir(directory.c_str());
+    if (dir == nullptr) {
+        return;
+    }
+    const size_t suffix_len = std::strlen(kTempSuffix);
+    while (struct dirent* entry = readdir(dir)) {
+        const std::string name = entry->d_name;
+        if (name.size() > suffix_len &&
+            name.compare(name.size() - suffix_len, suffix_len, kTempSuffix) == 0) {
+            temp_names.push_back(name);
+        }
+    }
+    closedir(dir);
+
+    for (const std::string& temp_name : temp_names) {
+        const std::string temp_path = JoinPath(directory, temp_name);
+        const std::string target_path =
+            JoinPath(directory, temp_name.substr(0, temp_name.size() - suffix_len));
+        struct stat target = {};
+        if (stat(target_path.c_str(), &target) == 0) {
+            // The original survived, so the write never reached the swap: drop the temp.
+            std::remove(temp_path.c_str());
+            ESP_LOGW(kTag, "Discarded stale temp file %s", temp_path.c_str());
+        } else if (std::rename(temp_path.c_str(), target_path.c_str()) == 0) {
+            ESP_LOGW(kTag, "Recovered interrupted write %s", target_path.c_str());
+        }
+    }
 }
 
 bool WriteClipWav(const std::string& path, const recording_service::RecordedClip& clip)
@@ -591,6 +652,7 @@ void NotifyHandler()
 esp_err_t ScanDirectoryInto(const std::string& directory, Snapshot* snapshot)
 {
     errno = 0;
+    RecoverInterruptedWrites(directory);
     DIR* dir = opendir(directory.c_str());
     if (dir == nullptr) {
         if (errno == ENOENT) {
@@ -733,6 +795,7 @@ int64_t FileModifiedSeconds(const std::string& path)
 esp_err_t ListEntriesInDirectory(const std::string& directory, std::vector<RecordingEntry>* entries)
 {
     errno = 0;
+    RecoverInterruptedWrites(directory);
     DIR* dir = opendir(directory.c_str());
     if (dir == nullptr) {
         if (errno == ENOENT) {
