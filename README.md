@@ -1,100 +1,150 @@
-# Followup Product Introduction
+# Followup
 
-Followup is a place to capture your thoughts — whether it's an idea, a to-do, or just a note. Record what's on your mind at that light-bulb moment, before it slips away, and Followup helps you organize it afterward. With Gemini, your recordings are transcribed and summarized automatically. Everything is stored on your SD card.
+O Followup é um lugar para guardar seus pensamentos: uma ideia, uma tarefa ou só uma anotação. Grave o que está na sua cabeça no momento em que a ideia surge, antes que ela escape, e o Followup ajuda a organizar depois. Com o Gemini, as gravações são transcritas e resumidas automaticamente. Tudo fica guardado no seu cartão SD.
 
-It runs on the [Waveshare ESP32-S3-ePaper-3.97](https://docs.waveshare.com/ESP32-S3-ePaper-3.97), so your thoughts live on a quiet, always-on screen you can place anywhere — a constant, low-interruption reminder instead of one more notification buried in your phone.
+Ele roda na [Waveshare ESP32-S3-ePaper-3.97](https://docs.waveshare.com/ESP32-S3-ePaper-3.97). Assim, seus pensamentos ficam numa tela silenciosa e sempre ligada, que você pode deixar em qualquer lugar: um lembrete constante e discreto, em vez de mais uma notificação perdida no celular. A mesma tela e-paper também serve para **ler livros** em EPUB.
 
-## One-Sentence Positioning
+## Em uma frase
 
-**Followup is a voice-first thought-capture companion on always-on ePaper: record ideas, to-dos, and notes in the moment, let Gemini transcribe and summarize them, and keep the ones that matter in front of you as stickies.**
+**O Followup é um caderno de voz numa tela e-paper sempre ligada: grave ideias, tarefas e notas na hora, deixe o Gemini transcrever e resumir, mantenha à vista o que importa como lembretes fixos e leia seus livros na mesma tela.**
 
-## What It Is Suitable For
+## Para que serve
 
-- Capturing a sudden idea by voice at the light-bulb moment, before it's forgotten
-- Jotting quick to-dos and notes hands-free while you're in the middle of something else
-- Keeping a small, always-visible set of follow-ups on a desk, fridge, or wall
-- Revisiting past ideas later to decide what's still worth pursuing
-- Anyone who wants their thoughts organized without living inside another app on their phone
+- Registrar uma ideia por voz no instante em que ela aparece, antes de esquecer
+- Anotar tarefas e lembretes rápidos sem usar as mãos, no meio de outra atividade
+- Manter à vista, na mesa, na geladeira ou na parede, um pequeno conjunto de coisas para acompanhar
+- Rever ideias antigas depois e decidir quais ainda valem a pena
+- Ler livros numa tela confortável, sem brilho e sem distrações
+- Para quem quer seus pensamentos organizados sem viver dentro de mais um aplicativo no celular
 
-## Key Features
+## Principais recursos
 
-### 1. Capture at the Light-Bulb Moment
+### 1. Grave no momento da ideia
 
-Press record and speak. Every capture starts as a voice recording, tagged as an **Idea**, a **To-do**, or a **Note**, so you can get the thought down the instant it arrives without stopping to type.
+Segure o BOOT e fale. Cada registro começa como uma gravação de voz (até 60 segundos), marcada como **Ideia**, **Tarefa** ou **Nota**, para você guardar o pensamento na hora sem parar para digitar.
 
-### 2. Gemini Transcription and Summarization
+### 2. Transcrição e resumo com o Gemini
 
-Once a recording is saved, Gemini transcribes the audio and summarizes it — turning a rambling voice memo into readable text and a concise summary you can scan at a glance.
+Depois que a gravação é salva, o Gemini transcreve o áudio no idioma falado e resume o conteúdo em português. Um áudio solto vira um texto legível e um resumo curto, fácil de bater o olho.
 
-A Gemini API key from [Google AI Studio](https://aistudio.google.com/) is required. You can get started on the free tier, subject to Gemini's free-tier limits, or use a paid account to transcribe without those limits.
+É preciso uma chave de API do Gemini, que você cria no [Google AI Studio](https://aistudio.google.com/apikey). Dá para começar no plano gratuito, dentro dos limites dele, ou usar uma conta paga para transcrever sem esses limites. Quando o plano gratuito devolve "limite excedido" por alguns segundos, o Followup tenta de novo sozinho.
 
-### 3. Everything Stored on Your SD Card
+### 3. Tudo guardado no seu cartão SD
 
-Recordings, transcripts, and summaries are stored locally on the device's SD card. Your thoughts stay with you, on your own storage.
+Gravações, transcrições e resumos ficam no cartão SD do próprio aparelho. Seus pensamentos continuam com você, no seu armazenamento.
 
-### 4. Vibe-Check Your Ideas
+### 4. Checar a vibe das ideias
 
-Ideas don't all age well. Review each one and decide whether it's still a vibe worth keeping — or something to trash so you can move on with a clear head.
+Nem toda ideia envelhece bem. Revise cada uma e decida se ela ainda faz sentido ou se é melhor descartar e seguir em frente com a cabeça leve.
 
-### 5. Follow Up on Tasks and Notes
+### 5. Acompanhe tarefas e notas
 
-Mark a task or note as a follow-up to keep it on your radar. Followup helps you stay on track and focused on what actually needs doing next.
+Marque uma tarefa ou nota para acompanhar e ela não sai do seu radar. O Followup ajuda você a manter o foco no que realmente precisa ser feito.
 
-### 6. Display Your Follow-Ups as Stickies
+### 6. Seus acompanhamentos como lembretes fixos
 
-Pin your follow-ups to the ePaper display as sticky notes. Because the screen is always on and low-power, they stay in front of you as a constant, gentle reminder.
+Fixe seus acompanhamentos na tela e-paper. Como a tela fica sempre ligada e gasta pouca energia, eles ficam à sua frente como um lembrete constante e discreto.
 
-## Typical Applications
+### 7. Livros
 
-| Application | Description |
+Copie arquivos `.epub` para a pasta `books` do cartão SD e abra **Livros** no menu. A biblioteca mostra capa, título, autor e quanto você já leu de cada livro. No leitor:
+
+- três tamanhos de letra;
+- pular para o próximo capítulo ou para o anterior;
+- a página em que você parou fica salva em cada livro e continua certa mesmo se você mudar o tamanho da letra.
+
+## Aplicações típicas
+
+| Aplicação | Descrição |
 | --- | --- |
-| Idea | Capture a spark by voice and revisit it later with a vibe check |
-| To-do | Record a task hands-free and follow up until it's done |
-| Note | Keep a quick thought or reminder, transcribed and summarized |
-| Follow-up | Flag the items that matter so they stay top of mind |
-| Stickies | Display your active follow-ups on the ePaper as always-on reminders |
-| Summaries | Let Gemini condense long recordings into a glanceable summary |
+| Ideia | Registre uma faísca por voz e revise depois com o "Checar vibe" |
+| Tarefa | Grave uma tarefa sem usar as mãos e acompanhe até concluir |
+| Nota | Guarde um pensamento ou lembrete rápido, transcrito e resumido |
+| Acompanhamento | Marque o que importa para não sair da sua cabeça |
+| Lembretes fixos | Mostre seus acompanhamentos na tela e-paper, sempre visíveis |
+| Resumos | Deixe o Gemini condensar gravações longas num resumo rápido de ler |
+| Livros | Leia EPUBs na tela e-paper, retomando de onde parou |
 
-## Brief Specifications
+## Especificações
 
-Followup runs on the [Waveshare ESP32-S3-ePaper-3.97](https://docs.waveshare.com/ESP32-S3-ePaper-3.97).
+O Followup roda na [Waveshare ESP32-S3-ePaper-3.97](https://docs.waveshare.com/ESP32-S3-ePaper-3.97).
 
-| Item | Information |
+| Item | Informação |
 | --- | --- |
-| Product Name | Followup (on ESP32-S3-ePaper-3.97) |
-| Product Type | Voice-capture notes app on an ePaper terminal |
-| MCU | ESP32-S3R8, dual-core Xtensa LX7 up to 240MHz |
-| Memory | 8MB PSRAM, 16MB flash |
-| Screen | 3.97-inch black-and-white ePaper, 800 x 480, SSD1677 controller |
-| Interaction | Buttons only — this board has no touchscreen (see [Controls](#controls)) |
-| Connectivity | 2.4GHz Wi-Fi (802.11 b/g/n), Bluetooth 5 (LE) |
-| Audio | ES8311 codec, onboard microphone, NS4150B amplifier, speaker header |
-| Sensors | QMI8658 6-axis IMU, PCF85063 real-time clock |
-| Power | AXP2101 PMIC, 3.7V lithium battery (MX1.25 connector), USB-C charging |
-| Storage | microSD card (recordings, transcripts, summaries) |
-| AI | Gemini (cloud) transcription and summarization, over Wi-Fi |
+| Nome do produto | Followup (na ESP32-S3-ePaper-3.97) |
+| Tipo | Caderno de voz e leitor de livros num terminal e-paper |
+| MCU | ESP32-S3R8, Xtensa LX7 dual-core até 240 MHz |
+| Memória | 8 MB de PSRAM, 16 MB de flash |
+| Tela | E-paper preto e branco de 3,97", 800 × 480, controlador SSD1677 |
+| Interação | Só botões; esta placa não tem tela sensível ao toque (veja [Controles](#controles)) |
+| Conectividade | Wi-Fi 2,4 GHz (802.11 b/g/n), Bluetooth 5 (LE) |
+| Áudio | Codec ES8311, microfone integrado, amplificador NS4150B, conector para alto-falante |
+| Sensores | IMU de 6 eixos QMI8658, relógio de tempo real PCF85063 |
+| Energia | PMIC AXP2101, bateria de lítio de 3,7 V (conector MX1.25), carregamento por USB-C |
+| Armazenamento | Cartão microSD (gravações, transcrições, resumos e livros) |
+| IA | Gemini (na nuvem) para transcrição e resumo, via Wi-Fi |
 
-The board also carries an SHTC3 temperature/humidity sensor on the shared I2C bus. Followup does not currently read it.
+A placa também tem um sensor de temperatura e umidade SHTC3 no mesmo barramento I2C. O Followup ainda não usa esse sensor.
 
-## Controls
+## Controles
 
-Followup is driven entirely by the three physical controls: a rocker, the BOOT button, and the PWR button.
+O Followup é controlado inteiramente pelos três controles físicos: a alavanca, o botão BOOT e o botão PWR.
 
-| Control | Action |
+| Controle | Ação |
 | --- | --- |
-| Rocker up / down | Move the selection; hold to repeat |
-| Rocker down, held | Back out of a list or card you have entered |
-| Rocker middle | Select / confirm |
-| BOOT, tap | Select / confirm |
-| BOOT, press and hold | Record — recording starts on the hold and stops when you let go |
-| PWR, tap | Lock the screen, or unlock it |
-| PWR, hold ~1s | Open the shutdown confirmation |
-| PWR, hold 6s | Hardware power-off, straight from the PMIC |
+| Alavanca para cima / para baixo | Move a seleção; segure para repetir |
+| Alavanca para baixo, segurada | Sai de uma lista ou de um cartão em que você entrou |
+| Apertar a alavanca | Seleciona / confirma |
+| BOOT, toque | Seleciona / confirma |
+| BOOT, segurado | Grava: começa quando você segura e para quando solta |
+| PWR, toque | Bloqueia ou desbloqueia a tela |
+| PWR, segurado ~1 s | Abre a confirmação de desligar |
+| PWR, segurado 6 s | Desliga direto pelo PMIC (desligamento forçado) |
 
-Recording is exclusive to BOOT, so no other control can start or stop a capture by accident. The 6-second PWR hold bypasses the firmware entirely and always cuts power.
+Gravar é exclusivo do BOOT, então nenhum outro controle começa ou para uma gravação por acidente. Segurar o PWR por 6 segundos passa por cima do firmware e sempre corta a energia.
 
-## Product Value Summary
+No leitor de livros:
 
-The value of Followup is a quiet, always-visible place to catch your thoughts and keep the important ones in front of you. Instead of losing an idea to a forgotten note app or burying a task in a notification stream, you speak it in the moment, let Gemini turn it into clean text and a summary, and keep everything private on your SD card.
+| Controle | Ação |
+| --- | --- |
+| Alavanca para baixo / para cima, toque curto | Próxima página / página anterior |
+| Alavanca para baixo, segurada | Volta para a lista de livros |
+| Apertar a alavanca ou tocar no BOOT | Abre o menu: tamanho da letra, capítulos, voltar |
 
-Ideas get a vibe check so you only carry forward what still matters. Tasks and notes become follow-ups so you stay on track. And the ones you care about most sit on the ePaper as stickies — a steady, low-interruption reminder of what's next.
+## Primeiros passos
+
+1. **Cartão SD:** use um microSD formatado em FAT32. O Followup cria as pastas de que precisa (`recordings`, `todos`, `summaries`, `books`...). Também dá para formatar pelo próprio aparelho em **Configurações → Formatar cartão SD**.
+2. **Wi-Fi e Gemini:** no primeiro uso, o aparelho cria uma rede Wi-Fi chamada `Followup-XXXXXX`. Conecte o celular nela e abra **http://192.168.4.1** para escolher o seu Wi-Fi, colar a chave do Gemini e ajustar o fuso horário. O padrão é Brasília; também há Amazonas, Acre e Fernando de Noronha, e a hora sincroniza pelo `pool.ntp.br`. Para voltar ao portal depois, ative **Configurações → Ponto de acesso**.
+3. **Livros:** ative **Configurações → Ativar OTG** com o cabo USB ligado no computador. O cartão SD aparece como um pendrive; copie os arquivos `.epub` para a pasta `books` e desative o OTG. Também dá para usar um leitor de cartão no computador.
+
+Sobre os livros:
+- Na primeira vez que você abre a biblioteca, o Followup lê cada livro e prepara a capa, o que leva alguns segundos por livro. Depois, fica guardado em cache e abre na hora.
+- EPUBs com DRM (protegidos contra cópia, como os comprados em algumas lojas) não abrem.
+- As capas precisam ser JPEG. Quando a capa é PNG, aparece uma capa genérica no lugar.
+- Livros de domínio público em português você encontra, por exemplo, no [Project Gutenberg](https://www.gutenberg.org/browse/languages/pt).
+
+## Compilar e gravar
+
+O firmware usa o **ESP-IDF v5.5.4**. Com o ambiente do ESP-IDF ativado:
+
+```bash
+idf.py set-target esp32s3
+idf.py build
+idf.py -p COM3 flash
+```
+
+No Windows, a placa aparece como uma porta COM ("USB JTAG/serial debug unit"); no Linux e no macOS, como `/dev/ttyACM0` ou `/dev/cu.usbmodem*`. Se a porta não aparecer, segure o **BOOT** enquanto conecta o cabo USB para entrar no modo de gravação.
+
+Outros detalhes úteis para quem mexe no firmware:
+
+- **Configuração de compilação:** fica em `sdkconfig.defaults`. O `sdkconfig` gerado não vai para o git, porque pode conter segredos como a chave do Gemini.
+- **Duração da gravação:** o limite fica no Kconfig, em `FOLLOWUP_MAX_RECORDING_SECONDS`.
+- **RAM interna:** o recurso mais apertado da placa, com cerca de 20 KB livres no pico de uso. O log serial mostra a cada minuto a memória livre e o uso de pilha de cada tarefa; confira depois de qualquer mudança que acrescente tarefas ou buffers.
+- **Largura dos textos:** `scripts/measure_text.py` mede a largura de um texto em pixels com as fontes do próprio firmware. Use antes de trocar um texto que fica num botão ou rótulo de largura fixa.
+- **Fontes e imagens:** para regerar, use `scripts/generate_epaper_fonts.py` e `scripts/generate_epaper_project_assets.py` (veja `docs/asset-generation.md`).
+
+## Em resumo
+
+O valor do Followup é ter um lugar silencioso e sempre visível para guardar seus pensamentos e manter à frente o que importa. Em vez de perder uma ideia num aplicativo de notas esquecido ou enterrar uma tarefa no meio das notificações, você fala na hora. O Gemini transforma a fala em texto limpo e num resumo, e tudo fica guardado, com privacidade, no seu cartão SD.
+
+As ideias passam pelo "Checar vibe", e você só leva adiante o que ainda faz sentido. Tarefas e notas viram acompanhamentos, para você não perder o rumo. O que mais importa fica fixo na tela e-paper: um lembrete constante e discreto do que vem a seguir. E, quando sobrar um tempo, a mesma tela vira um leitor de livros.
