@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "esp_log.h"
+#include "sdkconfig.h"
 #include "esp_timer.h"
 #include "followup_task_config.h"
 #include "freertos/FreeRTOS.h"
@@ -22,7 +23,7 @@ namespace {
 
 constexpr const char* kTag = "RecordingService";
 constexpr uint32_t kPrerollMs = 1000;
-constexpr uint32_t kMaxRecordingMs = 10000;
+constexpr uint32_t kMaxRecordingMs = CONFIG_FOLLOWUP_MAX_RECORDING_SECONDS * 1000U;
 constexpr size_t kCaptureChunkSamples = 480;
 constexpr size_t kClipChunkSamples = 4096;
 constexpr uint32_t kCaptureTaskStackWords = 4096;

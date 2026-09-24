@@ -27,6 +27,8 @@ void PlaybackWorker(void* arg)
             ESP_LOGW(kTag, "Playback failed for %s: %s", path->c_str(), esp_err_to_name(err));
         }
     }
+    // vTaskDelete(nullptr) never returns, so destructors below it never run.
+    path.reset();
     s_worker_active.store(false, std::memory_order_release);
     vTaskDelete(nullptr);
 }

@@ -39,6 +39,8 @@ void TranscribeWorker(void* arg)
     if (recording_id != nullptr) {
         (void)recording_session_service::BeginArchivedTranscription(*recording_id);
     }
+    // vTaskDelete(nullptr) never returns, so destructors below it never run.
+    recording_id.reset();
     s_transcribe_worker_active.store(false, std::memory_order_release);
     vTaskDelete(nullptr);
 }
@@ -52,18 +54,25 @@ void PlaybackWorker(void* arg)
 {
     std::unique_ptr<std::string> recording_id(static_cast<std::string*>(arg));
     if (recording_id != nullptr) {
-        // Resolve the WAV path off the input task (listing the archive touches SD).
-        const std::vector<recording_archive_service::RecordingEntry> recordings =
-            recording_archive_service::ListRecordings();
-        for (const recording_archive_service::RecordingEntry& entry : recordings) {
-            if (entry.recording_id == *recording_id) {
-                if (!entry.recording_path.empty()) {
-                    (void)playback_service::PlayFile(entry.recording_path.c_str());
+        // Resolve the WAV path off the input task (listing the archive touches SD). The
+        // listing is scoped so it is freed before playback and before the task deletes itself.
+        std::string wav_path;
+        {
+            const std::vector<recording_archive_service::RecordingEntry> recordings =
+                recording_archive_service::ListRecordings();
+            for (const recording_archive_service::RecordingEntry& entry : recordings) {
+                if (entry.recording_id == *recording_id) {
+                    wav_path = entry.recording_path;
+                    break;
                 }
-                break;
             }
         }
+        if (!wav_path.empty()) {
+            (void)playback_service::PlayFile(wav_path.c_str());
+        }
     }
+    // vTaskDelete(nullptr) never returns, so destructors below it never run.
+    recording_id.reset();
     s_playback_worker_active.store(false, std::memory_order_release);
     vTaskDelete(nullptr);
 }

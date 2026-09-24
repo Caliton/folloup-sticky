@@ -63,3 +63,10 @@ CONFIG_COMPILER_OPTIMIZATION_PERF=y
 # The Wi-Fi IP-event handler persists credentials to NVS on the default event task;
 # 2304 bytes leaves little headroom for that path.
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
+# Lets main.cpp's heap report list every task's stack high-water mark.
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+# Internal RAM is ~20 KB free after boot. Fewer static RX buffers (1.6 KB each, always
+# resident) and a lower dynamic-RX ceiling bound Wi-Fi's share; throughput needs here are
+# small (HTTPS to Gemini, NTP).
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16

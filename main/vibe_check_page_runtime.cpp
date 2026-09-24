@@ -42,6 +42,8 @@ void TranscribeWorker(void* arg)
     if (recording_id != nullptr) {
         (void)recording_session_service::BeginArchivedTranscription(*recording_id);
     }
+    // vTaskDelete(nullptr) never returns, so destructors below it never run.
+    recording_id.reset();
     s_transcribe_worker_active.store(false, std::memory_order_release);
     vTaskDelete(nullptr);
 }

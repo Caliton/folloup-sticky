@@ -28,6 +28,23 @@ menu "Folloup Settings"
             Start the Wi-Fi backend in access-point setup mode on boot instead
             of first attempting saved or built-in station credentials.
 
+    config FOLLOWUP_MAX_RECORDING_SECONDS
+        int "Maximum recording length (seconds)"
+        range 5 180
+        default 60
+        help
+            Longest single voice capture. Audio is buffered in PSRAM at 16 kHz mono
+            16-bit (about 32 KB per second), so 60 s uses roughly 1.9 MB.
+
+    config FOLLOWUP_AUTO_REPLAY_MAX_SECONDS
+        int "Replay takes up to this length before tagging (seconds)"
+        range 0 180
+        default 15
+        help
+            After a capture the take is played back before the tag menu opens.
+            Longer takes skip the replay so the user is not stuck listening to
+            them in full. 0 disables the replay.
+
     config FOLLOWUP_TIME_SYNC_DEFAULT_ENABLED
         bool "Enable clock sync by default"
         default y

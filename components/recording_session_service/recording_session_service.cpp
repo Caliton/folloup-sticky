@@ -8,6 +8,7 @@
 #include <string>
 
 #include "esp_log.h"
+#include "sdkconfig.h"
 #include "followup_task_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -337,6 +338,11 @@ void HandleStopCueResult(uint32_t token, SoundCuePlaybackResult result)
     }
 
     clip = recording_service::GetRecordedClip();
+    if (clip != nullptr &&
+        clip->duration_ms() > CONFIG_FOLLOWUP_AUTO_REPLAY_MAX_SECONDS * 1000U) {
+        AdvanceToTagSelection("take too long for replay");
+        return;
+    }
     if (!StartClipPlayback(clip)) {
         AdvanceToTagSelection("playback unavailable");
     }
