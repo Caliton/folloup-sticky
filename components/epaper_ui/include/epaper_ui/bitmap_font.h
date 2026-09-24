@@ -27,7 +27,15 @@ struct BitmapFont {
     const uint8_t* bitmaps;
 };
 
-const GlyphBitmap* FindGlyph(const BitmapFont& font, char ch);
+// Decodes the UTF-8 code point starting at `*index` and advances `*index` past it.
+// Malformed or truncated sequences consume one byte and yield U+FFFD.
+uint32_t DecodeUtf8(std::string_view text, size_t* index);
+
+// Returns the byte length of the UTF-8 sequence that starts with `lead`
+// (1 for ASCII, continuation bytes, and invalid leads).
+size_t Utf8SequenceLength(unsigned char lead);
+
+const GlyphBitmap* FindGlyph(const BitmapFont& font, uint32_t code_point);
 int MeasureText(const BitmapFont& font, std::string_view text, int tracking = 0);
 
 }  // namespace epaper_font
