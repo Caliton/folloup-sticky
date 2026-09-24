@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import struct
 import subprocess
 import tempfile
@@ -199,8 +200,29 @@ def write_source(
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def load_png_pixels(asset_path: Path, *, fixed_size: int | None) -> tuple[int, int, list[int]]:
+    """Cross-platform PNG -> 1-bit pixels with the same fill rule as parse_bmp_pixels."""
+    from PIL import Image  # python -m pip install pillow
+
+    image = Image.open(asset_path).convert("RGBA")
+    if fixed_size is not None and image.size != (fixed_size, fixed_size):
+        image = image.resize((fixed_size, fixed_size), Image.LANCZOS)
+    width, height = image.size
+    pixels: list[int] = []
+    for red, green, blue, alpha in image.getdata():
+        luminance = (red * 30 + green * 59 + blue * 11) // 100
+        pixels.append(1 if alpha >= 16 and luminance < 245 else 0)
+    return width, height, pixels
+
+
 def build_bitmaps(specs: list[AssetSpec], *, fixed_size: int | None) -> list[BitmapAsset]:
     bitmaps: list[BitmapAsset] = []
+    if shutil.which("sips") is None:
+        # Non-macOS hosts: decode with Pillow instead of the sips -> BMP round trip.
+        for spec in specs:
+            width, height, pixels = load_png_pixels(spec.path, fixed_size=fixed_size)
+            bitmaps.append(pack_bitmap(width, height, pixels))
+        return bitmaps
     with tempfile.TemporaryDirectory() as temp_dir:
         for spec in specs:
             bmp_path = convert_png_to_bmp(spec.path, temp_dir, fixed_size=fixed_size)
