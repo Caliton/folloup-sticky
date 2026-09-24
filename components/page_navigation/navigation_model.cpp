@@ -1,5 +1,7 @@
 #include "page_navigation/navigation_model.h"
 
+#include <algorithm>
+
 namespace page_navigation {
 namespace {
 
@@ -136,7 +138,8 @@ NavigationModel BuildDashboardPageNavigationModel()
     NavigationModel model = {};
     model.scope = NavigationScope::kDashboard;
 
-    for (int index = 0; index < 5; ++index) {
+    constexpr int kDashboardMenuItems = 6;  // epaper_ui::kDashboardMenuItemCount
+    for (int index = 0; index < kDashboardMenuItems; ++index) {
         AddItem(model, NavigationItemSection::kDashboardPageMenu,
                 NavigationItemRole::kDashboardMenuItem, index);
     }
@@ -227,6 +230,23 @@ NavigationModel BuildFollowUpPageNavigationModel(int timeline_group_count)
     for (int index = 0; index < group_count; ++index) {
         AddItem(model, NavigationItemSection::kFollowUpPageTimelineGroups,
                 NavigationItemRole::kFollowUpPageTimelineGroup, index);
+    }
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    return model;
+}
+
+NavigationModel BuildBooksPageNavigationModel(int book_count)
+{
+    NavigationModel model = {};
+    model.scope = NavigationScope::kBooks;
+
+    for (int index = 0; index < std::max(0, book_count); ++index) {
+        AddItem(model, NavigationItemSection::kBooksPageList, NavigationItemRole::kBooksPageItem,
+                index);
     }
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);

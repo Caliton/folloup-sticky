@@ -43,6 +43,7 @@ constexpr const char* kDefaultDirectories[] = {
     "trash",
     "trash/recordings",
     "trash/todos",
+    "books",
 };
 
 struct QueuedRequest {

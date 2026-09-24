@@ -331,7 +331,7 @@ namespace dashboard_page_menu {
 
 inline constexpr int kUtilityItemCount = 0;
 inline constexpr int kUtilityItemGap = spacing::k8;
-inline constexpr int kMainItemCount = 5;
+inline constexpr int kMainItemCount = 6;
 
 }  // namespace dashboard_page_menu
 

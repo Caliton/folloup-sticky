@@ -19,6 +19,7 @@ enum class NavigationScope : uint8_t {
     kFollowUp,
     kDetails,
     kOnboarding,
+    kBooks,
 };
 
 enum class NavigationItemSection : uint8_t {
@@ -35,6 +36,7 @@ enum class NavigationItemSection : uint8_t {
     kFollowUpPageTimelineGroups,
     kDetailsPageControls,
     kOnboardingPageControls,
+    kBooksPageList,
 };
 
 enum class NavigationItemRole : uint8_t {
@@ -76,6 +78,7 @@ enum class NavigationItemRole : uint8_t {
     kOnboardingPageClose,
     kOnboardingPagePrev,
     kOnboardingPageNext,
+    kBooksPageItem,
 };
 
 struct NavigationItemDescriptor {
@@ -107,6 +110,8 @@ NavigationModel BuildFollowUpPageNavigationModel(int timeline_group_count);
 // have no transcript yet); when false the page has just the Back button.
 NavigationModel BuildDetailsPageNavigationModel(bool with_transcribe = false);
 NavigationModel BuildOnboardingPageNavigationModel();
+// One item per book (item_index = library index) followed by the footer.
+NavigationModel BuildBooksPageNavigationModel(int book_count);
 
 }  // namespace page_navigation
 

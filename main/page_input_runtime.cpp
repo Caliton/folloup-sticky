@@ -10,6 +10,8 @@
 #include "follow_up_page_runtime.h"
 #include "notes_page_interactions.h"
 #include "notes_page_runtime.h"
+#include "books_page_runtime.h"
+#include "reader_page_runtime.h"
 #include "onboarding_page_interactions.h"
 #include "onboarding_page_runtime.h"
 #include "overlay_runtime.h"
@@ -955,6 +957,143 @@ ButtonResult HandleNotesButtonEvent(const button_service::ButtonEventInfo& event
     }
 }
 
+// --- Books (library) page -------------------------------------------------
+
+esp_err_t ApplyBooksPageAndFooterDisplayState()
+{
+    const esp_err_t page_err = books_page_runtime::UpdateDisplayState();
+    if (page_err != ESP_OK && page_err != ESP_ERR_INVALID_STATE) {
+        return page_err;
+    }
+    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
+    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
+        return footer_err;
+    }
+    return page_err != ESP_OK ? page_err : footer_err;
+}
+
+void ApplyBooksFocusUpdate(const page_actions::FocusUpdateOutcome& outcome)
+{
+    if (!outcome.handled) {
+        return;
+    }
+    if (outcome.sync_footer_projection) {
+        footer_runtime::SetProjectionState(books_page_runtime::BuildFooterProjectionState());
+    }
+    if (outcome.apply_page_state) {
+        const display_service::RefreshRequest refresh_request = {
+            .refresh_mode = display_service::RefreshMode::kPartial,
+            .scope = display_service::RefreshScope::kRegion,
+        };
+        if (outcome.sync_footer_projection) {
+            (void)ui_refresh_runtime::Schedule(ui_refresh_runtime::SurfaceKey::kBooksPage,
+                                               &ApplyBooksPageAndFooterDisplayState,
+                                               refresh_request);
+            return;
+        }
+        (void)books_page_runtime::UpdateDisplayStateAndRequestRefresh(refresh_request);
+    }
+}
+
+FocusMoveResult ApplyBooksMoveResult(const page_actions::FocusMoveOutcome& outcome)
+{
+    FocusMoveResult result = {};
+    if (!outcome.handled) {
+        return result;
+    }
+    result.handled = true;
+    result.interaction_result = MakeConsumedResult(outcome.play_navigation_cue);
+    ApplyBooksFocusUpdate({
+        .handled = outcome.handled,
+        .apply_page_state = outcome.apply_page_state,
+        .sync_footer_projection = outcome.sync_footer_projection,
+    });
+    return result;
+}
+
+ButtonResult HandleBooksButtonEvent(const button_service::ButtonEventInfo& event)
+{
+    ButtonResult result = {};
+    if (!button_service::IsPrimaryButton(event.button)) {
+        return result;
+    }
+    switch (event.event) {
+        case button_service::ButtonEvent::kSingleClick: {
+            const books_page_runtime::ActivateResult activation =
+                books_page_runtime::ActivateFocusedItem();
+            if (!activation.handled) {
+                return result;
+            }
+            result.handled = true;
+            result.interaction_result = MakeConsumedResult(activation.play_activate_cue);
+            result.footer_item = activation.footer_item;
+            if (result.footer_item != footer_runtime::FooterFocusItem::kNone) {
+                result.interaction_result.play_feedback = false;
+                result.interaction_result.feedback_cue = app_interaction::FeedbackCue::kNone;
+            }
+            return result;
+        }
+        case button_service::ButtonEvent::kPressDown:
+        case button_service::ButtonEvent::kPressUp:
+        case button_service::ButtonEvent::kPressRepeat:
+        case button_service::ButtonEvent::kLongPressStart:
+        case button_service::ButtonEvent::kLongPressUp:
+            result.handled = true;
+            result.interaction_result.consumed = true;
+            return result;
+        case button_service::ButtonEvent::kDoubleClick:
+        default:
+            return result;
+    }
+}
+
+// --- Reader page -------------------------------------------------------------
+
+// Rocker press-down/repeat reach MoveFocus first; the reader turns pages on a short *release*
+// instead, so that holding DOWN (back to the library) does not also turn the page.
+constexpr uint32_t kReaderShortPressMs = 350;
+
+FocusMoveResult ApplyReaderMoveResult()
+{
+    FocusMoveResult result = {};
+    result.handled = true;
+    result.interaction_result.consumed = true;
+    return result;
+}
+
+ButtonResult HandleReaderButtonEvent(const button_service::ButtonEventInfo& event)
+{
+    ButtonResult result = {};
+    const bool rocker = event.button == button_service::ButtonId::kUp ||
+                        event.button == button_service::ButtonId::kDown;
+    if (rocker) {
+        if (event.event == button_service::ButtonEvent::kPressUp &&
+            event.pressed_ms < kReaderShortPressMs) {
+            reader_page_runtime::TurnPage(event.button == button_service::ButtonId::kDown ? 1 : -1);
+        } else if (event.button == button_service::ButtonId::kDown &&
+                   event.event == button_service::ButtonEvent::kLongPressStart) {
+            reader_page_runtime::RequestBack();
+        }
+        result.handled = true;
+        result.interaction_result.consumed = true;
+        return result;
+    }
+    if (!button_service::IsPrimaryButton(event.button)) {
+        return result;
+    }
+    if (event.event == button_service::ButtonEvent::kSingleClick) {
+        (void)reader_page_runtime::ShowMenu();
+        result.handled = true;
+        result.interaction_result = MakeConsumedResult(true);
+        return result;
+    }
+    if (event.event != button_service::ButtonEvent::kDoubleClick) {
+        result.handled = true;
+        result.interaction_result.consumed = true;
+    }
+    return result;
+}
+
 // --- Todos page ------------------------------------------------------------
 
 esp_err_t ApplyTodosPageAndFooterDisplayState()
@@ -1552,6 +1691,8 @@ footer_runtime::ProjectionState BuildFooterProjectionForScreen(display_service::
             return summarize_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kNotes:
             return notes_page_runtime::BuildFooterProjectionState();
+        case display_service::ScreenId::kBooks:
+            return books_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kTodos:
             return todos_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kFollowUp:
@@ -1588,6 +1729,9 @@ void ResetFocusForScreen(display_service::ScreenId screen)
         case display_service::ScreenId::kNotes:
             notes_page_runtime::ResetFocus();
             return;
+        case display_service::ScreenId::kBooks:
+            books_page_runtime::ResetFocus();
+            return;
         case display_service::ScreenId::kTodos:
             todos_page_runtime::ResetFocus();
             return;
@@ -1623,6 +1767,10 @@ FocusMoveResult MoveFocusForCurrentScreen(int delta, bool page_jump)
             return ApplySummarizeMoveResult(summarize_page_runtime::MoveFocus(delta));
         case display_service::ScreenId::kNotes:
             return ApplyNotesMoveResult(notes_page_runtime::MoveFocus(delta));
+        case display_service::ScreenId::kBooks:
+            return ApplyBooksMoveResult(books_page_runtime::MoveFocus(delta));
+        case display_service::ScreenId::kReader:
+            return ApplyReaderMoveResult();
         case display_service::ScreenId::kTodos:
             return ApplyTodosMoveResult(todos_page_runtime::MoveFocus(delta));
         case display_service::ScreenId::kFollowUp:
@@ -1655,6 +1803,10 @@ ButtonResult HandleButtonEventForScreen(display_service::ScreenId screen,
             return HandleSummarizeButtonEvent(event);
         case display_service::ScreenId::kNotes:
             return HandleNotesButtonEvent(event);
+        case display_service::ScreenId::kBooks:
+            return HandleBooksButtonEvent(event);
+        case display_service::ScreenId::kReader:
+            return HandleReaderButtonEvent(event);
         case display_service::ScreenId::kTodos:
             return HandleTodosButtonEvent(event);
         case display_service::ScreenId::kFollowUp:

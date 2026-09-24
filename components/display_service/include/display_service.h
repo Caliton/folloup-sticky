@@ -1,6 +1,8 @@
 #ifndef DISPLAY_SERVICE_H_
 #define DISPLAY_SERVICE_H_
 
+#include "epaper_ui/books_page.h"
+#include "epaper_ui/reader_page.h"
 #include "epaper_ui/lock_screen.h"
 #include "epaper_ui/global_footer.h"
 #include "epaper_ui/keyboard.h"
@@ -36,6 +38,8 @@ enum class ScreenId {
     kFollowUp,
     kDetails,
     kOnboarding,
+    kBooks,
+    kReader,
     kLockScreen,
 };
 
@@ -101,6 +105,8 @@ esp_err_t SetTodosPageState(const epaper_ui::TodosPageState& state);
 esp_err_t SetFollowUpPageState(const epaper_ui::FollowUpPageState& state);
 esp_err_t SetDetailsPageState(const epaper_ui::DetailsPageState& state);
 esp_err_t SetOnboardingPageState(const epaper_ui::OnboardingPageState& state);
+esp_err_t SetBooksPageState(const epaper_ui::BooksPageState& state);
+esp_err_t SetReaderPageState(const epaper_ui::ReaderPageState& state);
 esp_err_t SetLockScreenState(const epaper_ui::LockScreenState& state);
 esp_err_t SetKeyboardState(const epaper_ui::KeyboardState& state);
 esp_err_t SetCardModalState(const epaper_ui::CardModalState& state);

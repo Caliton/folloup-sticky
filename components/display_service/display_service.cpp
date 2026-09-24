@@ -91,6 +91,8 @@ epaper_ui::TodosPageState s_todos_page_state = {};
 epaper_ui::FollowUpPageState s_follow_up_page_state = {};
 epaper_ui::DetailsPageState s_details_page_state = {};
 epaper_ui::OnboardingPageState s_onboarding_page_state = {};
+epaper_ui::BooksPageState s_books_page_state = {};
+epaper_ui::ReaderPageState s_reader_page_state = {};
 epaper_ui::LockScreenState s_lock_screen_state = {};
 epaper_ui::KeyboardState s_keyboard_state = {};
 epaper_ui::CardModalState s_card_modal_state = {};
@@ -114,6 +116,8 @@ struct RenderSnapshot {
     epaper_ui::FollowUpPageState follow_up_page = {};
     epaper_ui::DetailsPageState details_page = {};
     epaper_ui::OnboardingPageState onboarding_page = {};
+    epaper_ui::BooksPageState books_page = {};
+    epaper_ui::ReaderPageState reader_page = {};
     epaper_ui::LockScreenState lock_screen = {};
     epaper_ui::KeyboardState keyboard = {};
     epaper_ui::CardModalState card_modal = {};
@@ -189,6 +193,8 @@ const RenderSnapshot& CaptureRenderSnapshot()
     snapshot.follow_up_page = s_follow_up_page_state;
     snapshot.details_page = s_details_page_state;
     snapshot.onboarding_page = s_onboarding_page_state;
+    snapshot.books_page = s_books_page_state;
+    snapshot.reader_page = s_reader_page_state;
     snapshot.lock_screen = s_lock_screen_state;
     snapshot.keyboard = s_keyboard_state;
     snapshot.card_modal = s_card_modal_state;
@@ -476,6 +482,24 @@ void DrawOnboardingUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot
                                   kPortraitHeight,
                                   snapshot.onboarding_page,
                                   snapshot.status_bar);
+}
+
+void DrawBooksUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
+{
+    EpaperPanel& panel = Panel();
+    panel.Clear(true);
+    epaper_ui::DrawBooksPage(framebuffer, WAVESHARE_EPD_WIDTH, WAVESHARE_EPD_HEIGHT,
+                             kPortraitWidth, kPortraitHeight, snapshot.books_page,
+                             snapshot.status_bar, snapshot.global_footer);
+}
+
+void DrawReaderUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
+{
+    EpaperPanel& panel = Panel();
+    panel.Clear(true);
+    epaper_ui::DrawReaderPage(framebuffer, WAVESHARE_EPD_WIDTH, WAVESHARE_EPD_HEIGHT,
+                              kPortraitWidth, kPortraitHeight, snapshot.reader_page,
+                              snapshot.status_bar);
 }
 
 void DrawDetailsUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
@@ -851,6 +875,54 @@ esp_err_t ApplyDetails(RefreshMode refresh_mode)
     return ESP_OK;
 }
 
+esp_err_t ApplyBooks(RefreshMode refresh_mode)
+{
+    const RenderSnapshot& snapshot = CaptureRenderSnapshot();
+    EpaperPanel& panel = Panel();
+    DrawBooksUnderlay(panel.framebuffer(), snapshot);
+    CaptureUnderlaySnapshot(panel.framebuffer());
+    DrawCurrentOverlays(panel.framebuffer(), snapshot);
+
+    // Publish the screen before driving the panel, not after. The drive takes
+    // seconds, and ScreenActiveForRefresh gates on this value: leaving it stale for
+    // the whole render means an async event arriving mid-transition sees the old
+    // screen, skips merging into this refresh, and lands afterwards as a separate
+    // partial-waveform drive over an image that was already correct.
+    s_current_screen.store(ScreenId::kBooks, std::memory_order_relaxed);
+    RefreshBusyGuard refresh_busy;
+    const esp_err_t err = RefreshForMode(panel, refresh_mode);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    LogMetrics(panel.metrics());
+    return ESP_OK;
+}
+
+esp_err_t ApplyReader(RefreshMode refresh_mode)
+{
+    const RenderSnapshot& snapshot = CaptureRenderSnapshot();
+    EpaperPanel& panel = Panel();
+    DrawReaderUnderlay(panel.framebuffer(), snapshot);
+    CaptureUnderlaySnapshot(panel.framebuffer());
+    DrawCurrentOverlays(panel.framebuffer(), snapshot);
+
+    // Publish the screen before driving the panel, not after. The drive takes
+    // seconds, and ScreenActiveForRefresh gates on this value: leaving it stale for
+    // the whole render means an async event arriving mid-transition sees the old
+    // screen, skips merging into this refresh, and lands afterwards as a separate
+    // partial-waveform drive over an image that was already correct.
+    s_current_screen.store(ScreenId::kReader, std::memory_order_relaxed);
+    RefreshBusyGuard refresh_busy;
+    const esp_err_t err = RefreshForMode(panel, refresh_mode);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    LogMetrics(panel.metrics());
+    return ESP_OK;
+}
+
 bool HasVisibleOverlay(const RenderSnapshot& snapshot)
 {
     return snapshot.keyboard.visible || snapshot.card_modal.visible ||
@@ -985,6 +1057,12 @@ esp_err_t RefreshCurrentScreenRegionLocked()
         case ScreenId::kDetails:
             DrawDetailsUnderlay(panel.framebuffer(), snapshot);
             break;
+        case ScreenId::kBooks:
+            DrawBooksUnderlay(panel.framebuffer(), snapshot);
+            break;
+        case ScreenId::kReader:
+            DrawReaderUnderlay(panel.framebuffer(), snapshot);
+            break;
         case ScreenId::kLockScreen:
             DrawLockScreenUnderlay(panel.framebuffer(), snapshot);
             break;
@@ -1046,6 +1124,10 @@ esp_err_t RefreshCurrentScreenLocked(RefreshMode refresh_mode)
             return ApplyOnboarding(refresh_mode);
         case ScreenId::kDetails:
             return ApplyDetails(refresh_mode);
+        case ScreenId::kBooks:
+            return ApplyBooks(refresh_mode);
+        case ScreenId::kReader:
+            return ApplyReader(refresh_mode);
         case ScreenId::kLockScreen:
             return ApplyLockScreen(refresh_mode);
         default:
@@ -1147,6 +1229,10 @@ void DisplayTask(void*)
                 err = ApplyOnboarding(command.refresh_request.refresh_mode);
             } else if (command.screen == ScreenId::kDetails) {
                 err = ApplyDetails(command.refresh_request.refresh_mode);
+            } else if (command.screen == ScreenId::kBooks) {
+                err = ApplyBooks(command.refresh_request.refresh_mode);
+            } else if (command.screen == ScreenId::kReader) {
+                err = ApplyReader(command.refresh_request.refresh_mode);
             } else {
                 err = ApplyHomeScreen(command.refresh_request.refresh_mode);
             }
@@ -1406,6 +1492,28 @@ esp_err_t SetOnboardingPageState(const epaper_ui::OnboardingPageState& state)
 
     std::lock_guard<std::mutex> lock(s_state_mutex);
     s_onboarding_page_state = state;
+    return ESP_OK;
+}
+
+esp_err_t SetBooksPageState(const epaper_ui::BooksPageState& state)
+{
+    if (!s_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    std::lock_guard<std::mutex> lock(s_state_mutex);
+    s_books_page_state = state;
+    return ESP_OK;
+}
+
+esp_err_t SetReaderPageState(const epaper_ui::ReaderPageState& state)
+{
+    if (!s_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    std::lock_guard<std::mutex> lock(s_state_mutex);
+    s_reader_page_state = state;
     return ESP_OK;
 }
 

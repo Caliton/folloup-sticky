@@ -70,3 +70,6 @@ CONFIG_FREERTOS_USE_TRACE_FACILITY=y
 # small (HTTPS to Gemini, NTP).
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6
 CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
+# Book file names on the SD card often carry accents; use UTF-8 for the FATFS API so
+# "Memórias Póstumas.epub" opens instead of failing on an OEM code page.
+CONFIG_FATFS_API_ENCODING_UTF_8=y

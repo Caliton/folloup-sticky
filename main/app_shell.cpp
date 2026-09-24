@@ -38,6 +38,8 @@
 #include "details_page_runtime.h"
 #include "follow_up_page_runtime.h"
 #include "notes_page_runtime.h"
+#include "books_page_runtime.h"
+#include "reader_page_runtime.h"
 #include "nvs.h"
 #include "onboarding_page_runtime.h"
 #include "status_bar_runtime.h"
@@ -306,6 +308,69 @@ esp_err_t ShowNotesScreen(display_service::RefreshMode refresh_mode)
     }
     return display_service::SetCurrentScreen(display_service::ScreenId::kNotes, refresh_mode,
                                              "show_notes_screen");
+}
+
+esp_err_t ShowBooksScreen(display_service::RefreshMode refresh_mode)
+{
+    SyncStatusBarState("show_books_screen");
+    page_input_runtime::ResetFocusForScreen(display_service::ScreenId::kBooks);
+    footer_runtime::SetLayoutState(FooterLayoutForScreen(display_service::ScreenId::kBooks));
+    footer_runtime::SetProjectionState(
+        page_input_runtime::BuildFooterProjectionForScreen(display_service::ScreenId::kBooks));
+    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
+    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Footer sync before books screen failed: %s", esp_err_to_name(footer_err));
+    }
+    // The library is scanned on the book worker; the page shows "Carregando..." until then.
+    books_page_runtime::RequestScan(false);
+    const esp_err_t page_err = books_page_runtime::UpdateDisplayState();
+    if (page_err != ESP_OK && page_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Books page state build failed: %s", esp_err_to_name(page_err));
+    }
+    return display_service::SetCurrentScreen(display_service::ScreenId::kBooks, refresh_mode,
+                                             "show_books_screen");
+}
+
+esp_err_t ShowReaderScreen(const epub_reader::PString& book_path,
+                           display_service::RefreshMode refresh_mode)
+{
+    SyncStatusBarState("show_reader_screen");
+    // Full-height reading area: hide the footer like the onboarding carousel does.
+    footer_runtime::LayoutState hidden_footer = {};
+    hidden_footer.visible = false;
+    hidden_footer.show_mic = false;
+    footer_runtime::SetLayoutState(hidden_footer);
+    reader_page_runtime::Open(book_path);
+    const esp_err_t page_err = reader_page_runtime::UpdateDisplayState();
+    if (page_err != ESP_OK && page_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Reader page state build failed: %s", esp_err_to_name(page_err));
+    }
+    return display_service::SetCurrentScreen(display_service::ScreenId::kReader, refresh_mode,
+                                             "show_reader_screen");
+}
+
+// Open the reader for a book chosen in the library (deferred until input dispatch returns).
+void ShowReaderScreenIfRequested()
+{
+    const epub_reader::PString path = books_page_runtime::ConsumePendingOpenBook();
+    if (path.empty()) {
+        return;
+    }
+    const esp_err_t err = ShowReaderScreen(path, display_service::RefreshMode::kFull);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Show reader screen failed: %s", esp_err_to_name(err));
+    }
+}
+
+void HandleReaderBackIfRequested()
+{
+    if (!reader_page_runtime::ConsumePendingBack()) {
+        return;
+    }
+    const esp_err_t err = ShowBooksScreen(display_service::RefreshMode::kFull);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Reader back navigation failed: %s", esp_err_to_name(err));
+    }
 }
 
 esp_err_t ShowTodosScreen(display_service::RefreshMode refresh_mode)
@@ -701,6 +766,13 @@ bool HandleDashboardMenuItem(int menu_index, void*)
         }
         return true;
     }
+    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kBooks)) {
+        const esp_err_t err = ShowBooksScreen(display_service::RefreshMode::kFull);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(kTag, "Show books screen failed: %s", esp_err_to_name(err));
+        }
+        return true;
+    }
     if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kFollowUp)) {
         const esp_err_t err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
         if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
@@ -1024,6 +1096,14 @@ void HandleStorageEvent(const storage_service::Event& event, void*)
              storage_service::OperationPhaseName(event.snapshot.phase),
              esp_err_to_name(event.snapshot.last_error));
 
+    // Books may have been added or removed: after a format or a USB storage session the
+    // library is rescanned on the next visit.
+    if (event.snapshot.phase == storage_service::OperationPhase::kSucceeded &&
+        (event.snapshot.operation == storage_service::Operation::kFormatSd ||
+         event.snapshot.operation == storage_service::Operation::kExitUsbMode)) {
+        books_page_runtime::InvalidateLibrary();
+    }
+
     if (event.snapshot.operation == storage_service::Operation::kFormatSd) {
         esp_err_t overlay_err = ESP_OK;
         switch (event.snapshot.phase) {
@@ -1241,7 +1321,9 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
         input_focus_runtime::HandleButtonEvent(event);
     PlayInteractionFeedback(overlay_result);
     if (overlay_result.select_modal_submitted) {
-        if (!notes_page_runtime::HandleItemActionSelection(
+        if (!reader_page_runtime::HandleMenuSelection(
+                overlay_result.select_modal_selected_index) &&
+            !notes_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !todos_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
@@ -1253,6 +1335,7 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
                 overlay_result.select_modal_selected_index);
         }
         ShowDetailsScreenIfRequested();
+        HandleReaderBackIfRequested();
     }
     if (overlay_result.request_format_sd_card) {
         const esp_err_t err = storage_service::RequestFormatSdCard();
@@ -1341,6 +1424,8 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
             PlayInteractionFeedback(footer_result);
         }
         HandleDetailsBackIfRequested();
+        ShowReaderScreenIfRequested();
+        HandleReaderBackIfRequested();
         HandleOnboardingDismissIfRequested();
         ShowOnboardingFromSettingsIfRequested();
         FlushOverlayFeedback();
