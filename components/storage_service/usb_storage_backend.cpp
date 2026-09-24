@@ -5,6 +5,7 @@
 
 #include "driver/sdmmc_host.h"
 #include "esp_log.h"
+#include "hal/usb_serial_jtag_ll.h"
 #include "sdmmc_cmd.h"
 #include "tinyusb.h"
 #include "tinyusb_default_config.h"
@@ -97,6 +98,10 @@ void CleanupLocked()
             ESP_LOGW(kTag, "Uninstall TinyUSB driver failed: %s", esp_err_to_name(err));
         }
         s_driver_installed = false;
+        // Installing TinyUSB muxed the internal USB PHY to the OTG controller, and
+        // usb_del_phy() only drops the pad overrides: without handing the PHY back, the
+        // USB-Serial-JTAG console (COM port, flashing, logs) stays gone until a reboot.
+        usb_serial_jtag_ll_phy_enable_external(false);
     }
 
     if (s_card != nullptr) {

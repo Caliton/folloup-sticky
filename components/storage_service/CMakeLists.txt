@@ -3,7 +3,7 @@ idf_component_register(
         "storage_service.cpp"
         "usb_storage_backend.cpp"
     INCLUDE_DIRS "include"
-    REQUIRES board power_service sd_card fatfs task_config esp_timer
+    REQUIRES board power_service sd_card fatfs task_config esp_timer hal
              esp_driver_sdmmc sdmmc espressif__esp_tinyusb
 )
 
