@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -33,7 +35,16 @@ constexpr const char* kTag = "GeminiService";
 constexpr const char* kSettingsTag = "GeminiSettings";
 constexpr const char* kStorageNamespace = "gemini";
 constexpr const char* kStorageApiKey = "api_key";
-constexpr const char* kDefaultModelName = "models/gemini-2.5-flash-lite";
+// Tried in order. Google retires models for new projects without notice (2.5-flash-lite now
+// answers 404 "no longer available to new users"), so a 404 advances to the next candidate
+// for the rest of the session instead of failing every request.
+constexpr const char* kModelCandidates[] = {
+    "models/gemini-3.5-flash-lite",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-3.8-flash",
+};
+std::atomic<size_t> s_model_index{0};
 constexpr const char* kGeminiApiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/";
 constexpr const char* kPortalApiSettingsGeminiUri = "/api/settings/gemini";
 constexpr const char* kPortalApiSettingsGeminiResetUri = "/api/settings/gemini/reset";
@@ -264,7 +275,7 @@ Snapshot BuildSnapshotLocked()
     snapshot.settings.has_sdkconfig_api_key = !sdkconfig_api_key.empty();
     snapshot.settings.api_key_source = GetApiKeySourceLocked();
     snapshot.settings.api_key_last4 = GetApiKeyLast4Locked();
-    snapshot.settings.model_name = kDefaultModelName;
+    snapshot.settings.model_name = kModelCandidates[s_model_index.load()];
 
     snapshot.runtime.initialized = s_initialized;
     // Not ready while offline: callers would otherwise start a transcription that fails
@@ -1135,12 +1146,28 @@ std::string BuildTranscriptRequestJson(const std::string& file_uri)
     return json;
 }
 
+// POSTs `method` (":generateContent", ":countTokens") to the current model, advancing to the
+// next candidate on 404 NOT_FOUND.
+HttpResponse PerformModelPost(const std::string& api_key, const char* method,
+                              const std::string& body)
+{
+    for (;;) {
+        size_t index = s_model_index.load();
+        const std::string url = std::string(kGeminiApiBaseUrl) + kModelCandidates[index] + method;
+        HttpResponse response = PerformGeminiPost(url, api_key, body);
+        if (response.status_code != 404 || index + 1 >= std::size(kModelCandidates)) {
+            return response;
+        }
+        ESP_LOGW(kTag, "Model %s unavailable (404); falling back to %s", kModelCandidates[index],
+                 kModelCandidates[index + 1]);
+        s_model_index.compare_exchange_strong(index, index + 1);
+    }
+}
+
 HttpResponse PerformGenerateContentWithBody(const std::string& api_key,
-                                            const std::string& model_name,
                                             const std::string& request_json)
 {
-    const std::string url = std::string(kGeminiApiBaseUrl) + model_name + ":generateContent";
-    return PerformGeminiPost(url, api_key, request_json);
+    return PerformModelPost(api_key, ":generateContent", request_json);
 }
 
 uint32_t ResolveUploadChunkCount(const recording_service::RecordedClip& clip)
@@ -1340,7 +1367,7 @@ std::string GetEffectiveApiKey()
 
 std::string GetEffectiveModelName()
 {
-    return kDefaultModelName;
+    return kModelCandidates[s_model_index.load()];
 }
 
 TextResult GenerateText(const std::string& prompt)
@@ -1359,8 +1386,8 @@ TextResult GenerateText(const std::string& prompt)
         return result;
     }
 
-    const std::string url = std::string(kGeminiApiBaseUrl) + model_name + ":generateContent";
-    const HttpResponse http = PerformGeminiPost(url, api_key, BuildTextRequestBody(prompt, true));
+    const HttpResponse http =
+        PerformModelPost(api_key, ":generateContent", BuildTextRequestBody(prompt, true));
     result.http_status = http.status_code;
     if (!http.error_code.empty()) {
         result.error_code = http.error_code;
@@ -1409,8 +1436,8 @@ TokenCountResult CountTokens(const std::string& prompt)
         return result;
     }
 
-    const std::string url = std::string(kGeminiApiBaseUrl) + model_name + ":countTokens";
-    const HttpResponse http = PerformGeminiPost(url, api_key, BuildTextRequestBody(prompt, false));
+    const HttpResponse http =
+        PerformModelPost(api_key, ":countTokens", BuildTextRequestBody(prompt, false));
     result.http_status = http.status_code;
     if (!http.error_code.empty()) {
         result.error_code = http.error_code;
@@ -1513,7 +1540,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
 
     // 3. generateContent referencing the uploaded file.
     HttpResponse http =
-        PerformGenerateContentWithBody(api_key, model_name, BuildTranscriptRequestJson(file_uri));
+        PerformGenerateContentWithBody(api_key, BuildTranscriptRequestJson(file_uri));
     result.http_status = http.status_code;
     result.total_elapsed_ms =
         static_cast<uint64_t>((esp_timer_get_time() - task_started_us) / 1000ULL);
