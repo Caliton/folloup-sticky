@@ -33,7 +33,7 @@ CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y
 
 # Auto-sleep demo defaults for hardware validation.
 CONFIG_FOLLOWUP_AUTO_SLEEP_DISPLAY_SLEEP_TIMEOUT_SECONDS=180
-CONFIG_FOLLOWUP_AUTO_SLEEP_LIGHT_SLEEP_TIMEOUT_SECONDS=1800
+CONFIG_FOLLOWUP_AUTO_SLEEP_LIGHT_SLEEP_TIMEOUT_SECONDS=300
 
 # Wi-Fi and clock-sync demo defaults. Runtime NVS settings take precedence over
 # these built-in station credentials.
@@ -73,3 +73,5 @@ CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
 # Book file names on the SD card often carry accents; use UTF-8 for the FATFS API so
 # "Memórias Póstumas.epub" opens instead of failing on an OEM code page.
 CONFIG_FATFS_API_ENCODING_UTF_8=y
+# Battery: let the CPU scale 80-240 MHz when idle (configured in main.cpp).
+CONFIG_PM_ENABLE=y

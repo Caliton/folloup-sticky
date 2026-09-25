@@ -16,7 +16,7 @@ idf_component_register(SRCS "onboarding_page_runtime.cpp" "onboarding_page_inter
                             "reader_page_runtime.cpp"
                        INCLUDE_DIRS "."
                        REQUIRES app_update axp2101 board button_service display_service feedback_service
-                                device_sleep_service epaper_ui epub_reader esp_driver_gpio
+                                device_sleep_service epaper_ui epub_reader esp_pm esp_driver_gpio
                                 esp_hw_support esp_partition gemini_service imu_service power_service
                                 nvs_flash page_navigation playback_service project_assets
                                 recording_archive_service

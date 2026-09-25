@@ -7,7 +7,9 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_pm.h"
 #include "nvs_flash.h"
+#include "power_service.h"
 #include "sdkconfig.h"
 
 namespace {
@@ -31,6 +33,13 @@ void OnAllocFailed(size_t size, uint32_t caps, const char* function_name)
 
 void ReportHeap(void*)
 {
+    power_service::Status power = {};
+    const bool have_power = power_service::ReadStatus(&power) == ESP_OK;
+    ESP_LOGI(kHeapTag, "battery=%d%% %umV usb=%d charging=%d",
+             have_power ? static_cast<int>(power.battery.state_of_charge_percent) : -1,
+             have_power ? static_cast<unsigned>(power.battery.voltage_mv) : 0U,
+             have_power && power.usb_detected ? 1 : 0,
+             have_power && power.charge_state == power_service::ChargeState::kCharging ? 1 : 0);
     ESP_LOGI(kHeapTag, "internal free=%u min=%u largest=%u | psram free=%u min=%u",
              static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
              static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
@@ -83,6 +92,21 @@ extern "C" void app_main(void)
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+
+    // Dynamic frequency scaling: drop to 80 MHz when idle. Drivers (SPI panel, I2S audio,
+    // Wi-Fi, SDMMC) hold PM locks while active, so throughput is unchanged. Automatic light
+    // sleep stays off: device_sleep_runtime owns sleep entry and its wake sources.
+#if CONFIG_PM_ENABLE
+    const esp_pm_config_t pm_config = {
+        .max_freq_mhz = 240,
+        .min_freq_mhz = 80,
+        .light_sleep_enable = false,
+    };
+    const esp_err_t pm_err = esp_pm_configure(&pm_config);
+    if (pm_err != ESP_OK) {
+        ESP_LOGW(kHeapTag, "esp_pm_configure failed: %s", esp_err_to_name(pm_err));
+    }
+#endif
 
     StartHeapReports();
     app_shell::Run();

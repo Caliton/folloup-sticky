@@ -1018,7 +1018,10 @@ void InitializeStack()
     wifi_init_config_t wifi_init = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_init));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+    // Modem sleep: the radio naps between the AP's DTIM beacons and stays associated. With
+    // WIFI_PS_NONE it stayed fully on (~100 mA) the whole time the device was connected,
+    // which dominated battery life. Latency to Gemini/NTP grows by at most a beacon interval.
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
                                                         OnWifiEvent, nullptr,
                                                         &s_wifi_event_handler));
