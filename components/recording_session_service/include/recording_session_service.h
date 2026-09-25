@@ -63,6 +63,9 @@ struct Snapshot {
     std::string last_saved_recording_path = {};
     std::string last_saved_transcript_path = {};
     std::string last_transcript = {};
+    // Set when Gemini chose the tag (tag menu skipped); auto_tag is where the take ended up.
+    bool auto_tagged = false;
+    recording_archive_service::RecordingTag auto_tag = recording_archive_service::RecordingTag::kNote;
     std::string last_status_message = {};
     std::string last_error_code = {};
     std::string last_error_message = {};

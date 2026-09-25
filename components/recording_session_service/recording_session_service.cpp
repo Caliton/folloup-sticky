@@ -64,6 +64,9 @@ std::string s_pending_recording_id = {};
 // no longer matches and is dropped instead of driving a stale transition.
 uint32_t s_cue_token = 0;
 std::atomic<bool> s_playback_worker_active{false};
+// True while AutoSaveWorker still owns the in-memory take; a new press must not re-arm the
+// recorder underneath it.
+std::atomic<bool> s_auto_save_active{false};
 // Set when BOOT is released before the start cue finishes; consumed by HandleStartCueResult.
 bool s_finish_pending_after_start_cue = false;
 
@@ -208,6 +211,8 @@ void ResetToIdleLocked()
     s_snapshot.last_saved_recording_path.clear();
     s_snapshot.last_saved_transcript_path.clear();
     s_snapshot.last_transcript.clear();
+    s_snapshot.auto_tagged = false;
+    s_snapshot.auto_tag = recording_archive_service::RecordingTag::kNote;
     s_snapshot.last_error_code.clear();
     s_snapshot.last_error_message.clear();
     s_snapshot.last_status_message = kIdleStatus;
@@ -249,6 +254,7 @@ void NotifyLocked()
 constexpr uint32_t kPlaybackWorkerStackWords = 4096;
 
 void AdvanceToTagSelection(const char* reason);
+bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classify);
 
 void PlaybackWorker(void* arg)
 {
@@ -268,11 +274,57 @@ void PlaybackWorker(void* arg)
     vTaskDelete(nullptr);
 }
 
+// With Gemini available the tag menu is skipped: the take is saved as a Note and the
+// transcription request itself decides the tag ("adiciona uma tarefa ..." -> Task), which
+// HandleTranscriptionEvent applies. Saving does SD I/O, and the callers here run on the
+// sound-cue callback or the self-deleting playback worker, so it gets its own short task
+// (same budget as the input task that runs a manual SubmitTagSelection).
+constexpr uint32_t kAutoSaveWorkerStackWords = 4096;
+
+void AutoSaveWorker(void*)
+{
+    (void)SaveAndTranscribe(recording_archive_service::RecordingTag::kNote, true);
+    s_auto_save_active.store(false, std::memory_order_release);
+    vTaskDelete(nullptr);
+}
+
+bool StartAutoSave()
+{
+    if (!gemini_service::GetSnapshot().runtime.ready) {
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        if (s_snapshot.phase != Phase::kStopCue && s_snapshot.phase != Phase::kPlayingBack) {
+            return true;  // session moved on (cancelled/failed); nothing left to route
+        }
+        s_snapshot.phase = Phase::kSaving;
+        s_snapshot.last_status_message = kSavingStatus;
+        s_snapshot.last_error_code.clear();
+        s_snapshot.last_error_message.clear();
+        NotifyLocked();
+    }
+    s_auto_save_active.store(true, std::memory_order_release);
+    if (xTaskCreate(&AutoSaveWorker, "rec_autosave", kAutoSaveWorkerStackWords, nullptr,
+                    followup_task_config::kPriorityStorage, nullptr) == pdPASS) {
+        return true;
+    }
+    s_auto_save_active.store(false, std::memory_order_release);
+    ESP_LOGW(kTag, "Failed to start auto-save worker; falling back to the tag menu");
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_snapshot.phase = Phase::kStopCue;  // re-enter AdvanceToTagSelection's accepted phases
+    return false;
+}
+
 // Every route out of the stop cue lands here: playback done, playback refused to start, or
 // the stop cue itself failed. The clip is still unsaved, so the tag menu's Discard option
-// is what throws away a bad take.
+// is what throws away a bad take (only shown when Gemini can't auto-tag it).
 void AdvanceToTagSelection(const char* reason)
 {
+    if (StartAutoSave()) {
+        ESP_LOGI(kTag, "Auto-tagging take via Gemini (%s)", reason);
+        return;
+    }
     std::lock_guard<std::mutex> lock(s_mutex);
     if (s_snapshot.phase != Phase::kStopCue && s_snapshot.phase != Phase::kPlayingBack) {
         return;
@@ -384,6 +436,108 @@ void MarkBlockedLocked(BlockedReason reason)
     s_snapshot.last_error_message.clear();
 }
 
+// Archives the in-memory take under `tag`, then starts its transcription. With `classify`
+// the transcription also picks the final tag, applied in HandleTranscriptionEvent.
+bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classify)
+{
+    recording_service::RecordedClipPtr clip = recording_service::GetRecordedClip();
+    if (!clip || clip->empty()) {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_snapshot.phase = Phase::kFailed;
+        s_snapshot.last_status_message = "Falha ao salvar";
+        s_snapshot.last_error_code = "recording_missing";
+        s_snapshot.last_error_message = "O clipe da gravação não estava disponível";
+        NotifyLocked();
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_snapshot.phase = Phase::kSaving;
+        s_snapshot.last_status_message = kSavingStatus;
+        s_snapshot.last_error_code.clear();
+        s_snapshot.last_error_message.clear();
+        NotifyLocked();
+    }
+
+    recording_archive_service::SaveOptions options = {};
+    options.tag = tag;
+    ESP_LOGI(kTag,
+             "Starting archive save: tag=%s samples=%u duration_ms=%lu",
+             recording_archive_service::TagName(options.tag),
+             static_cast<unsigned>(clip->sample_count()),
+             static_cast<unsigned long>(clip->duration_ms()));
+    const recording_archive_service::SaveResult save_result =
+        recording_archive_service::SaveClip(*clip, options);
+    ESP_LOGI(kTag,
+             "Archive save result: success=%d clip_saved=%d metadata_saved=%d id=%s wav=%s metadata=%s error=%s",
+             save_result.success ? 1 : 0,
+             save_result.clip_saved ? 1 : 0,
+             save_result.metadata_saved ? 1 : 0,
+             save_result.recording_id.empty() ? "<none>" : save_result.recording_id.c_str(),
+             save_result.recording_path.empty() ? "<none>" : save_result.recording_path.c_str(),
+             save_result.metadata_path.empty() ? "<none>" : save_result.metadata_path.c_str(),
+             save_result.error_code.empty() ? "<none>" : save_result.error_code.c_str());
+
+    const bool should_transcribe = save_result.clip_saved && gemini_service::GetSnapshot().runtime.ready;
+    ESP_LOGI(kTag,
+             "Transcription decision: clip_saved=%d gemini_ready=%d should_transcribe=%d",
+             save_result.clip_saved ? 1 : 0,
+             gemini_service::GetSnapshot().runtime.ready ? 1 : 0,
+             should_transcribe ? 1 : 0);
+
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_snapshot.clip_saved = save_result.clip_saved;
+        s_snapshot.transcript_saved = false;
+        s_snapshot.last_saved_recording_id = save_result.recording_id;
+        s_snapshot.last_saved_recording_path = save_result.recording_path;
+        s_snapshot.last_saved_transcript_path = save_result.transcript_path;
+        s_pending_recording_id = save_result.recording_id;
+    }
+
+    if (should_transcribe && transcription_service::BeginTranscription(clip, classify)) {
+        recording_service::DiscardClip();
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_snapshot.phase = Phase::kTranscribing;
+        s_snapshot.request_in_flight = true;
+        s_snapshot.last_status_message = kTranscribingStatus;
+        s_snapshot.last_error_code.clear();
+        s_snapshot.last_error_message.clear();
+        NotifyLocked();
+        return true;
+    }
+
+    if (should_transcribe) {
+        ESP_LOGW(kTag,
+                 "Transcription did not start after save: id=%s",
+                 save_result.recording_id.empty() ? "<none>" : save_result.recording_id.c_str());
+    }
+
+    recording_service::DiscardClip();
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_snapshot.request_in_flight = false;
+        s_snapshot.phase = save_result.clip_saved ? Phase::kComplete : Phase::kFailed;
+        s_snapshot.last_status_message = save_result.clip_saved
+                                             ? kSavedWithoutTranscriptStatus
+                                             : (save_result.status_message.empty()
+                                                    ? "Falha ao salvar"
+                                                    : save_result.status_message);
+        s_snapshot.last_error_code = save_result.error_code;
+        s_snapshot.last_error_message = save_result.error_message;
+        if (save_result.clip_saved && !save_result.error_code.empty()) {
+            // Keep the saved result but surface the archive warning.
+            s_snapshot.last_error_message = save_result.error_message;
+        } else if (save_result.clip_saved) {
+            s_snapshot.last_error_code.clear();
+            s_snapshot.last_error_message.clear();
+        }
+        NotifyLocked();
+    }
+    return save_result.clip_saved;
+}
+
 }  // namespace
 
 esp_err_t Init()
@@ -484,7 +638,8 @@ bool HandlePowerPressDown(const Context& context)
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         // No new take while the previous one is still being cued, replayed, or resolved.
-        if (s_snapshot.phase == Phase::kStartCue || s_snapshot.phase == Phase::kStopCue ||
+        if (s_auto_save_active.load(std::memory_order_acquire) ||
+            s_snapshot.phase == Phase::kStartCue || s_snapshot.phase == Phase::kStopCue ||
             s_snapshot.phase == Phase::kPlayingBack ||
             s_snapshot.phase == Phase::kAwaitingTagSelection ||
             s_snapshot.phase == Phase::kTranscribing) {
@@ -649,102 +804,7 @@ bool SubmitTagSelection(int selected_index)
         return true;
     }
 
-    recording_service::RecordedClipPtr clip = recording_service::GetRecordedClip();
-    if (!clip || clip->empty()) {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_snapshot.phase = Phase::kFailed;
-        s_snapshot.last_status_message = "Falha ao salvar";
-        s_snapshot.last_error_code = "recording_missing";
-        s_snapshot.last_error_message = "O clipe da gravação não estava disponível";
-        NotifyLocked();
-        return false;
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_snapshot.phase = Phase::kSaving;
-        s_snapshot.last_status_message = kSavingStatus;
-        s_snapshot.last_error_code.clear();
-        s_snapshot.last_error_message.clear();
-        NotifyLocked();
-    }
-
-    recording_archive_service::SaveOptions options = {};
-    options.tag = kTagOptions[static_cast<size_t>(selected_index)].tag;
-    ESP_LOGI(kTag,
-             "Starting archive save: tag=%s samples=%u duration_ms=%lu",
-             recording_archive_service::TagName(options.tag),
-             static_cast<unsigned>(clip->sample_count()),
-             static_cast<unsigned long>(clip->duration_ms()));
-    const recording_archive_service::SaveResult save_result =
-        recording_archive_service::SaveClip(*clip, options);
-    ESP_LOGI(kTag,
-             "Archive save result: success=%d clip_saved=%d metadata_saved=%d id=%s wav=%s metadata=%s error=%s",
-             save_result.success ? 1 : 0,
-             save_result.clip_saved ? 1 : 0,
-             save_result.metadata_saved ? 1 : 0,
-             save_result.recording_id.empty() ? "<none>" : save_result.recording_id.c_str(),
-             save_result.recording_path.empty() ? "<none>" : save_result.recording_path.c_str(),
-             save_result.metadata_path.empty() ? "<none>" : save_result.metadata_path.c_str(),
-             save_result.error_code.empty() ? "<none>" : save_result.error_code.c_str());
-
-    const bool should_transcribe = save_result.clip_saved && gemini_service::GetSnapshot().runtime.ready;
-    ESP_LOGI(kTag,
-             "Transcription decision: clip_saved=%d gemini_ready=%d should_transcribe=%d",
-             save_result.clip_saved ? 1 : 0,
-             gemini_service::GetSnapshot().runtime.ready ? 1 : 0,
-             should_transcribe ? 1 : 0);
-
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_snapshot.clip_saved = save_result.clip_saved;
-        s_snapshot.transcript_saved = false;
-        s_snapshot.last_saved_recording_id = save_result.recording_id;
-        s_snapshot.last_saved_recording_path = save_result.recording_path;
-        s_snapshot.last_saved_transcript_path = save_result.transcript_path;
-        s_pending_recording_id = save_result.recording_id;
-    }
-
-    if (should_transcribe && transcription_service::BeginTranscription(clip)) {
-        recording_service::DiscardClip();
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_snapshot.phase = Phase::kTranscribing;
-        s_snapshot.request_in_flight = true;
-        s_snapshot.last_status_message = kTranscribingStatus;
-        s_snapshot.last_error_code.clear();
-        s_snapshot.last_error_message.clear();
-        NotifyLocked();
-        return true;
-    }
-
-    if (should_transcribe) {
-        ESP_LOGW(kTag,
-                 "Transcription did not start after save: id=%s",
-                 save_result.recording_id.empty() ? "<none>" : save_result.recording_id.c_str());
-    }
-
-    recording_service::DiscardClip();
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_snapshot.request_in_flight = false;
-        s_snapshot.phase = save_result.clip_saved ? Phase::kComplete : Phase::kFailed;
-        s_snapshot.last_status_message = save_result.clip_saved
-                                             ? kSavedWithoutTranscriptStatus
-                                             : (save_result.status_message.empty()
-                                                    ? "Falha ao salvar"
-                                                    : save_result.status_message);
-        s_snapshot.last_error_code = save_result.error_code;
-        s_snapshot.last_error_message = save_result.error_message;
-        if (save_result.clip_saved && !save_result.error_code.empty()) {
-            // Keep the saved result but surface the archive warning.
-            s_snapshot.last_error_message = save_result.error_message;
-        } else if (save_result.clip_saved) {
-            s_snapshot.last_error_code.clear();
-            s_snapshot.last_error_message.clear();
-        }
-        NotifyLocked();
-    }
-    return save_result.clip_saved;
+    return SaveAndTranscribe(kTagOptions[static_cast<size_t>(selected_index)].tag, false);
 }
 
 void HandleRecordingEvent(const recording_service::Event& event)
@@ -826,6 +886,7 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
     bool should_attach_transcript = false;
     std::string pending_recording_id;
     std::string transcript_text;
+    std::string classified_tag;
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.request_in_flight = event.snapshot.request_in_flight;
@@ -834,10 +895,25 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
             should_attach_transcript = true;
             pending_recording_id = s_pending_recording_id;
             transcript_text = event.snapshot.last_transcript;
+            classified_tag = event.snapshot.last_tag;
         }
     }
 
     if (should_attach_transcript) {
+        // Auto-tagged takes were archived as Notes; move them before the transcript lands so
+        // the archive event that SaveTranscript fires already shows them on the right page.
+        bool retagged = false;
+        auto tag = recording_archive_service::RecordingTag::kNote;
+        if (classified_tag == "task") {
+            tag = recording_archive_service::RecordingTag::kTask;
+        } else if (classified_tag == "idea") {
+            tag = recording_archive_service::RecordingTag::kIdea;
+        }
+        if (tag != recording_archive_service::RecordingTag::kNote) {
+            retagged = recording_archive_service::UpdateRecordingTag(pending_recording_id, tag);
+            ESP_LOGI(kTag, "Auto-tag: id=%s tag=%s applied=%d", pending_recording_id.c_str(),
+                     recording_archive_service::TagName(tag), retagged ? 1 : 0);
+        }
         ESP_LOGI(kTag,
                  "Attaching transcript to saved recording: id=%s chars=%u",
                  pending_recording_id.c_str(),
@@ -856,6 +932,8 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         s_snapshot.transcript_saved = save_result.transcript_saved;
         s_snapshot.last_saved_transcript_path = save_result.transcript_path;
         s_snapshot.last_transcript = transcript_text;
+        s_snapshot.auto_tagged = !classified_tag.empty();
+        s_snapshot.auto_tag = retagged ? tag : recording_archive_service::RecordingTag::kNote;
         s_snapshot.phase = Phase::kComplete;
         s_snapshot.request_in_flight = false;
         s_snapshot.last_status_message = save_result.transcript_saved

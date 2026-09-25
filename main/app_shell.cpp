@@ -984,7 +984,21 @@ void HandleRecordingSessionEvent(const recording_session_service::Event& event, 
         }
         case recording_session_service::Phase::kComplete: {
             epaper_ui::ToastState toast = {};
-            if (event.snapshot.transcript_saved) {
+            if (event.snapshot.transcript_saved && event.snapshot.auto_tagged) {
+                // The tag menu was skipped, so say where Gemini filed the take.
+                switch (event.snapshot.auto_tag) {
+                    case recording_archive_service::RecordingTag::kTask:
+                        toast = BuildToast("Tarefa adicionada", EmbeddedIconId::kCheck);
+                        break;
+                    case recording_archive_service::RecordingTag::kIdea:
+                        toast = BuildToast("Ideia salva", EmbeddedIconId::kCheck);
+                        break;
+                    case recording_archive_service::RecordingTag::kNote:
+                    default:
+                        toast = BuildToast("Nota salva", EmbeddedIconId::kCheck);
+                        break;
+                }
+            } else if (event.snapshot.transcript_saved) {
                 toast = BuildToast("Transcrição salva no cartão SD", EmbeddedIconId::kFileTranscript);
             } else if (!event.snapshot.last_error_code.empty()) {
                 // Transcription was attempted but failed. Surface it as a failure (the recording

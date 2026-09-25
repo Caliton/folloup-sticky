@@ -61,6 +61,26 @@ constexpr const char* kAudioMimeType = "audio/wav";
 constexpr const char* kTranscriptPrompt =
     "Transcreva literalmente a fala deste áudio, no idioma em que foi falada, sem traduzir. "
     "Responda apenas com o texto da transcrição, sem comentários nem formatação.";
+// Same call, but the model also decides what kind of recording this is, so "adiciona uma
+// tarefa ..." lands straight in Tarefas without the tag menu. Answered as JSON (see
+// BuildTranscriptRequestJson's responseSchema): {"transcript", "tag", "text"}. The fields are
+// generated in that order on purpose: the model writes the literal speech first, classifies
+// with it in view, and only then strips the spoken command -- tagging first (or after the
+// command is gone) made the lite models miss obvious cues like "tive uma ideia".
+constexpr const char* kClassifyTranscriptPrompt =
+    "Responda em JSON com três campos, nesta ordem.\n"
+    "1. \"transcript\": a transcrição literal da fala deste áudio, no idioma em que foi "
+    "falada, sem traduzir.\n"
+    "2. \"tag\": o tipo da gravação, decidido pela transcrição:\n"
+    "- \"idea\" se a pessoa fala em ideia (ex.: \"tive uma ideia...\", \"anota uma ideia...\", "
+    "\"nova ideia...\", \"uma ideia: ...\");\n"
+    "- \"task\" se a pessoa pede para adicionar ou criar uma tarefa ou lembrete (ex.: "
+    "\"adiciona uma tarefa...\", \"nova tarefa...\", \"me lembra de...\"), ou se a fala é "
+    "claramente algo que ela precisa fazer;\n"
+    "- \"note\" em qualquer outro caso.\n"
+    "3. \"text\": a mesma transcrição, sem o comando do início (ex.: \"tive uma ideia de\", "
+    "\"adiciona uma tarefa\") quando houver, começando com letra maiúscula. Não resuma nem "
+    "reescreva o restante.";
 constexpr int kTranscribeTimeoutMs = 30000;
 constexpr size_t kHttpUploadChunkSamples = 2048;
 
@@ -1116,7 +1136,34 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
     return response;
 }
 
-std::string BuildTranscriptRequestJson(const std::string& file_uri)
+// Unpacks the {"tag","text"} JSON of a classified transcription in place. If the model ignored
+// the schema, the raw reply stays as the transcript and the tag stays empty (no retag).
+void ParseClassifiedTranscript(TranscriptionResult* result)
+{
+    cJSON* reply = cJSON_ParseWithLength(result->transcript.c_str(), result->transcript.size());
+    if (reply == nullptr) {
+        ESP_LOGW(kTag, "Classified transcript was not JSON; keeping raw text");
+        return;
+    }
+    const std::string literal = JsonStringField(reply, "transcript");
+    const std::string tag = JsonStringField(reply, "tag");
+    std::string text = JsonStringField(reply, "text");
+    cJSON_Delete(reply);
+    ESP_LOGI(kTag, "Classified transcript: tag=%s literal=\"%.80s\" text=\"%.80s\"",
+             tag.c_str(), literal.c_str(), text.c_str());
+    if (text.empty()) {
+        text = literal;
+    }
+    if (text.empty()) {
+        return;
+    }
+    result->transcript = text;
+    if (tag == "note" || tag == "task" || tag == "idea") {
+        result->tag = tag;
+    }
+}
+
+std::string BuildTranscriptRequestJson(const std::string& file_uri, bool classify)
 {
     cJSON* root = cJSON_CreateObject();
     cJSON* contents = cJSON_AddArrayToObject(root, "contents");
@@ -1125,7 +1172,8 @@ std::string BuildTranscriptRequestJson(const std::string& file_uri)
     cJSON* parts = cJSON_AddArrayToObject(content, "parts");
 
     cJSON* prompt_part = cJSON_CreateObject();
-    cJSON_AddStringToObject(prompt_part, "text", kTranscriptPrompt);
+    cJSON_AddStringToObject(prompt_part, "text",
+                            classify ? kClassifyTranscriptPrompt : kTranscriptPrompt);
     cJSON_AddItemToArray(parts, prompt_part);
 
     cJSON* audio_part = cJSON_CreateObject();
@@ -1136,6 +1184,23 @@ std::string BuildTranscriptRequestJson(const std::string& file_uri)
 
     cJSON* generation_config = cJSON_AddObjectToObject(root, "generationConfig");
     cJSON_AddNumberToObject(generation_config, "temperature", 0);
+    if (classify) {
+        cJSON_AddStringToObject(generation_config, "responseMimeType", "application/json");
+        cJSON* schema = cJSON_AddObjectToObject(generation_config, "responseSchema");
+        cJSON_AddStringToObject(schema, "type", "OBJECT");
+        cJSON* properties = cJSON_AddObjectToObject(schema, "properties");
+        cJSON* transcript = cJSON_AddObjectToObject(properties, "transcript");
+        cJSON_AddStringToObject(transcript, "type", "STRING");
+        cJSON* tag = cJSON_AddObjectToObject(properties, "tag");
+        cJSON_AddStringToObject(tag, "type", "STRING");
+        const char* tag_values[] = {"note", "task", "idea"};
+        cJSON_AddItemToObject(tag, "enum", cJSON_CreateStringArray(tag_values, 3));
+        cJSON* text = cJSON_AddObjectToObject(properties, "text");
+        cJSON_AddStringToObject(text, "type", "STRING");
+        const char* fields[] = {"transcript", "tag", "text"};
+        cJSON_AddItemToObject(schema, "required", cJSON_CreateStringArray(fields, 3));
+        cJSON_AddItemToObject(schema, "propertyOrdering", cJSON_CreateStringArray(fields, 3));
+    }
 
     char* raw = cJSON_PrintUnformatted(root);
     std::string json = raw != nullptr ? raw : "";
@@ -1471,7 +1536,7 @@ TokenCountResult CountTokens(const std::string& prompt)
     return result;
 }
 
-TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
+TranscriptionResult Transcribe(const recording_service::RecordedClip& clip, bool classify)
 {
     TranscriptionResult result = {};
     result.clip_duration_ms = clip.duration_ms();
@@ -1540,7 +1605,7 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
 
     // 3. generateContent referencing the uploaded file.
     HttpResponse http =
-        PerformGenerateContentWithBody(api_key, BuildTranscriptRequestJson(file_uri));
+        PerformGenerateContentWithBody(api_key, BuildTranscriptRequestJson(file_uri, classify));
     result.http_status = http.status_code;
     result.total_elapsed_ms =
         static_cast<uint64_t>((esp_timer_get_time() - task_started_us) / 1000ULL);
@@ -1553,6 +1618,9 @@ TranscriptionResult Transcribe(const recording_service::RecordedClip& clip)
     cJSON* root = cJSON_ParseWithLength(http.body.c_str(), http.body.size());
     if (http.status_code >= 200 && http.status_code < 300) {
         result.transcript = TrimForLog(ExtractCandidateText(root), 1U << 20);
+        if (classify) {
+            ParseClassifiedTranscript(&result);
+        }
         result.success = !result.transcript.empty();
         if (!result.success) {
             result.error_code = "empty_transcript";

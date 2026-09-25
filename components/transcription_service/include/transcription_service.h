@@ -18,6 +18,8 @@ struct Snapshot {
     std::string last_error_code = {};
     std::string last_error_message = {};
     std::string last_transcript = {};
+    // "note"/"task"/"idea" when the request classified the take (see BeginTranscription).
+    std::string last_tag = {};
 };
 
 struct Event {
@@ -29,7 +31,8 @@ using EventHandler = void (*)(const Event& event, void* context);
 esp_err_t Init();
 void SetEventHandler(EventHandler handler, void* context);
 Snapshot GetSnapshot();
-bool BeginTranscription(recording_service::RecordedClipPtr clip);
+// `classify` asks Gemini to also tag the take from what was said (see gemini_service::Transcribe).
+bool BeginTranscription(recording_service::RecordedClipPtr clip, bool classify = false);
 
 }  // namespace transcription_service
 

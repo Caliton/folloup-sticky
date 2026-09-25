@@ -19,6 +19,7 @@ constexpr uint32_t kWorkerTaskStackWords = 8192;
 
 struct TaskContext {
     recording_service::RecordedClipPtr clip = {};
+    bool classify = false;
 };
 
 std::mutex s_mutex;
@@ -31,6 +32,7 @@ std::string s_last_status_message = {};
 std::string s_last_error_code = {};
 std::string s_last_error_message = {};
 std::string s_last_transcript = {};
+std::string s_last_tag = {};
 
 Snapshot BuildSnapshotLocked()
 {
@@ -43,6 +45,7 @@ Snapshot BuildSnapshotLocked()
     snapshot.last_error_code = s_last_error_code;
     snapshot.last_error_message = s_last_error_message;
     snapshot.last_transcript = s_last_transcript;
+    snapshot.last_tag = s_last_tag;
     return snapshot;
 }
 
@@ -91,6 +94,7 @@ void WorkerTask(void* raw_context)
             s_last_error_code = "empty_audio";
             s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
+            s_last_tag.clear();
             notify.ArmLocked();
         }
         // vTaskDelete(nullptr) never returns: every RAII owner (mutex, context) must already
@@ -100,7 +104,7 @@ void WorkerTask(void* raw_context)
         return;
     }
 
-    const gemini_service::TranscriptionResult result = gemini_service::Transcribe(*context->clip);
+    const gemini_service::TranscriptionResult result = gemini_service::Transcribe(*context->clip, context->classify);
 
     {
         ScopedNotify notify;
@@ -112,10 +116,12 @@ void WorkerTask(void* raw_context)
             s_last_error_code.clear();
             s_last_error_message.clear();
             s_last_transcript = result.transcript;
+            s_last_tag = result.tag;
             ESP_LOGI(kTag,
-                     "Gemini transcription succeeded: chars=%u wav_bytes=%u clip_ms=%u "
+                     "Gemini transcription succeeded: chars=%u tag=%s wav_bytes=%u clip_ms=%u "
                      "upload_chunks=%u upload_elapsed_ms=%llu total_elapsed_ms=%llu",
                      static_cast<unsigned>(s_last_transcript.size()),
+                     s_last_tag.empty() ? "<none>" : s_last_tag.c_str(),
                      static_cast<unsigned>(result.wav_bytes),
                      static_cast<unsigned>(result.clip_duration_ms),
                      static_cast<unsigned>(result.upload_chunk_count),
@@ -126,6 +132,7 @@ void WorkerTask(void* raw_context)
             s_last_error_code = result.error_code;
             s_last_error_message = result.error_message;
             s_last_transcript.clear();
+            s_last_tag.clear();
             ESP_LOGW(kTag, "Gemini transcription failed: http=%d code=%s message=%s",
                      result.http_status, s_last_error_code.c_str(), s_last_error_message.c_str());
         }
@@ -154,6 +161,7 @@ esp_err_t Init()
     s_last_error_code.clear();
     s_last_error_message.clear();
     s_last_transcript.clear();
+    s_last_tag.clear();
     return ESP_OK;
 }
 
@@ -170,7 +178,7 @@ Snapshot GetSnapshot()
     return BuildSnapshotLocked();
 }
 
-bool BeginTranscription(recording_service::RecordedClipPtr clip)
+bool BeginTranscription(recording_service::RecordedClipPtr clip, bool classify)
 {
     if (Init() != ESP_OK) {
         return false;
@@ -198,6 +206,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
                                        ? "Gemini ainda não está pronto"
                                        : "Nenhuma chave de API do Gemini configurada";
             s_last_transcript.clear();
+            s_last_tag.clear();
             notify.ArmLocked();
             return false;
         }
@@ -207,6 +216,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
             s_last_error_code = "empty_audio";
             s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
+            s_last_tag.clear();
             notify.ArmLocked();
             return false;
         }
@@ -217,6 +227,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
         s_last_error_code.clear();
         s_last_error_message.clear();
         s_last_transcript.clear();
+        s_last_tag.clear();
         notify.ArmLocked();
     }
 
@@ -232,6 +243,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip)
         return false;
     }
     task_context->clip = std::move(clip);
+    task_context->classify = classify;
 
     TaskHandle_t task = nullptr;
     const BaseType_t created = xTaskCreatePinnedToCore(

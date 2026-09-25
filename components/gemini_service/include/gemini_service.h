@@ -90,6 +90,8 @@ struct TranscriptionResult {
     bool success = false;
     int http_status = 0;
     std::string transcript = {};
+    // Only set by a classifying Transcribe: "note", "task" or "idea" (empty = not classified).
+    std::string tag = {};
     std::string error_code = {};
     std::string error_message = {};
     uint32_t clip_duration_ms = 0;
@@ -115,7 +117,9 @@ std::string GetEffectiveModelName();
 // task). They use the effective API key + model and return the parsed result or an error.
 TextResult GenerateText(const std::string& prompt);
 TokenCountResult CountTokens(const std::string& prompt);
-TranscriptionResult Transcribe(const recording_service::RecordedClip& clip);
+// With `classify`, the same request also asks the model whether the take is a note, task or
+// idea (and strips a leading spoken command like "adiciona uma tarefa") -- see result.tag.
+TranscriptionResult Transcribe(const recording_service::RecordedClip& clip, bool classify = false);
 bool BeginAuthentication();
 void SetNetworkState(bool connected, bool access_point_mode);
 void RegisterPortalRoutes(httpd_handle_t server);
