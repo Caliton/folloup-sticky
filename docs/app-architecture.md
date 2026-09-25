@@ -1015,6 +1015,8 @@ Current app-shell usage on top of those low-level events is:
 - `UP` / `DOWN` press down: move roving focus (wraparound), one step per press.
   A plain `UP` / `DOWN` single click (the release) is inert.
 - `BOOT` or rocker-middle `FN` single click: activate / submit the focused item
+- `BOOT` double click: go to the home screen (not while locked; an open overlay
+  consumes it first)
 - hold `DOWN` (long-press): app-wide "exit an entered control" gesture, handled
   per screen (no-op at the app level; replaced the former `DOWN` double-click)
 - single `PWR` tap: back (dispatches the hold-`DOWN` gesture; ignored while locked)

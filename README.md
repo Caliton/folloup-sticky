@@ -96,6 +96,7 @@ O Followup é controlado inteiramente pelos três controles físicos: a alavanca
 | Alavanca para baixo, segurada | Volta: sai de uma lista ou de um cartão em que você entrou |
 | Apertar a alavanca | Seleciona / confirma |
 | BOOT, toque | Seleciona / confirma |
+| BOOT, dois toques rápidos | Volta direto para a tela inicial |
 | BOOT, segurado | Grava: começa quando você segura e para quando solta |
 | PWR, toque | Volta (o mesmo que segurar a alavanca para baixo) |
 | PWR, dois toques rápidos | Bloqueia ou desbloqueia a tela |

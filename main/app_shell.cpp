@@ -1456,6 +1456,17 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
             // lock-screen refresh, making the keys feel live behind the lock.
             break;
         case button_service::ButtonEvent::kDoubleClick:
+            // BOOT double click: straight back to the home screen from anywhere. No page
+            // handles a double click, and an open overlay consumed the event above. Never
+            // behind the lock screen, which would otherwise be skipped.
+            if (event.button == button_service::ButtonId::kAction) {
+                if (!lock_screen_runtime::IsActive() &&
+                    display_service::GetCurrentScreen() != display_service::ScreenId::kHome) {
+                    PlayInteractionFeedback(
+                        HandleFooterActivate(footer_runtime::FooterFocusItem::kHome, nullptr));
+                }
+                break;
+            }
             // FN has no double-click action: lock/unlock moved to the PMIC power key
             // (HandlePowerKeyInterrupt). DOWN is excluded because holding it is the
             // app-wide "exit an entered UI" gesture and the per-screen page input owns
