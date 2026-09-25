@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <soc/soc_caps.h>
 
 #define TAG "Es8311Codec"
@@ -62,9 +63,23 @@ Es8311Codec::Es8311Codec(void* i2c_master_handle, i2c_port_t i2c_port,
     } else {
         ESP_LOGI(TAG, "Es8311Codec initialized");
     }
+
+    const esp_timer_create_args_t idle_args = {
+        .callback = [](void* self) { static_cast<Es8311Codec*>(self)->OnOutputIdle(); },
+        .arg = this,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "codec_idle",
+        .skip_unhandled_events = true,
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&idle_args, &output_idle_timer_));
 }
 
 Es8311Codec::~Es8311Codec() {
+    if (output_idle_timer_ != nullptr) {
+        esp_timer_stop(output_idle_timer_);
+        esp_timer_delete(output_idle_timer_);
+        output_idle_timer_ = nullptr;
+    }
     Shutdown();
     if (dev_ != nullptr) {
         esp_codec_dev_delete(dev_);
@@ -118,12 +133,26 @@ void Es8311Codec::UpdatePaState() {
     if (pa_pin_ == GPIO_NUM_NC) {
         return;
     }
-    int level = output_enabled_ ? 1 : 0;
+    int level = output_powered_ ? 1 : 0;
     gpio_set_level(pa_pin_, pa_inverted_ ? !level : level);
 }
 
+// The codec, its I2S channels (MCLK/BCLK) and the PA are powered only while something is
+// being captured or played; they used to stay on for the device's whole life, including
+// light sleep, which kept the board well above its sleep floor.
 void Es8311Codec::UpdateDeviceState() {
-    if ((input_enabled_ || output_enabled_) && dev_ == nullptr) {
+    const bool want_open = input_enabled_ || output_powered_;
+    if (!want_open && dev_ != nullptr) {
+        esp_codec_dev_set_out_mute(dev_, true);
+        esp_codec_dev_close(dev_);
+        esp_codec_dev_delete(dev_);
+        dev_ = nullptr;
+        // Closing the codec device already disabled both I2S channels (same as Shutdown()).
+        channels_enabled_ = false;
+        UpdatePaState();
+        return;
+    }
+    if (want_open && dev_ == nullptr) {
         SetChannelsEnabled(true);
         esp_codec_dev_cfg_t dev_cfg = {
             .dev_type = ESP_CODEC_DEV_TYPE_IN_OUT,
@@ -212,7 +241,7 @@ void Es8311Codec::CreateDuplexChannels(gpio_num_t mclk, gpio_num_t bclk, gpio_nu
 
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(tx_handle_, &std_cfg));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle_, &std_cfg));
-    SetChannelsEnabled(true);
+    // Left disabled until the first capture or playback (see UpdateDeviceState).
     ESP_LOGI(TAG, "Duplex channels created");
 }
 
@@ -260,7 +289,25 @@ void Es8311Codec::EnableOutput(bool enable) {
     if (enable == output_enabled_) {
         return;
     }
+    // Logical switch only ("sounds allowed"); power follows writes, see Write().
     AudioCodec::EnableOutput(enable);
+    if (!enable && output_powered_) {
+        esp_timer_stop(output_idle_timer_);
+        output_powered_ = false;
+        UpdateDeviceState();
+    }
+}
+
+void Es8311Codec::OnOutputIdle() {
+    std::lock_guard<std::mutex> lock(data_if_mutex_);
+    if (!output_powered_) {
+        return;
+    }
+    if (writes_in_flight_ > 0) {
+        esp_timer_start_once(output_idle_timer_, kOutputIdlePowerDownUs);
+        return;
+    }
+    output_powered_ = false;
     UpdateDeviceState();
 }
 
@@ -288,15 +335,27 @@ int Es8311Codec::Write(const int16_t* data, int samples) {
     esp_codec_dev_handle_t dev = nullptr;
     {
         std::lock_guard<std::mutex> lock(data_if_mutex_);
-        if (!output_enabled_ || dev_ == nullptr) {
+        if (!output_enabled_ || codec_if_ == nullptr) {
+            return 0;
+        }
+        if (!output_powered_) {
+            output_powered_ = true;
+            UpdateDeviceState();
+        }
+        // Power down kOutputIdlePowerDownUs after the last write of a cue or clip.
+        esp_timer_stop(output_idle_timer_);
+        esp_timer_start_once(output_idle_timer_, kOutputIdlePowerDownUs);
+        if (dev_ == nullptr) {
             return 0;
         }
         dev = dev_;
-    }
-    if (dev == nullptr) {
-        return 0;
+        ++writes_in_flight_;
     }
     int ret = esp_codec_dev_write(dev, (void*)data, samples * sizeof(int16_t));
+    {
+        std::lock_guard<std::mutex> lock(data_if_mutex_);
+        --writes_in_flight_;
+    }
     if (ret != ESP_CODEC_DEV_OK) {
         ESP_LOGW(TAG, "Audio write failed: %d", ret);
         return 0;
@@ -316,7 +375,11 @@ void Es8311Codec::Shutdown() {
     }
     output_muted_ = true;
     output_enabled_ = false;
+    output_powered_ = false;
     input_enabled_ = false;
+    if (output_idle_timer_ != nullptr) {
+        esp_timer_stop(output_idle_timer_);
+    }
     UpdatePaState();
     if (codec_device_was_open) {
         channels_enabled_ = false;

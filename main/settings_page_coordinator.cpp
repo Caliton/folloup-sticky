@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <string>
 
+#include "feedback_service.h"
+
 namespace {
 
 std::string FormatStorageBytes(uint64_t bytes)
@@ -92,6 +94,12 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
         .toggle_state = BuildToggleState(
             wifi_state.access_point_mode,
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsEnableApToggle)),
+    };
+    state.sound_toggle = {
+        .label_text = "Sons",
+        .toggle_state = BuildToggleState(
+            feedback_service::IsSoundEnabled(),
+            IsRoleFocused(page_navigation::NavigationItemRole::kSettingsSoundToggle)),
     };
 
     state.storage_status.has_sd_card =

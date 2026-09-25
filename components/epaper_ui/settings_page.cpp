@@ -21,6 +21,7 @@ constexpr int kButtonStackGap = design::spacing::k12;
 struct Layout {
     UiRect wifi_toggle = {};
     UiRect access_point_toggle = {};
+    UiRect sound_toggle = {};
     UiRect storage_status = {};
     UiRect enable_otg_button = {};
     UiRect format_sd_button = {};
@@ -43,12 +44,15 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
     network_toggle_style.width = page_width;
     const UiRect wifi_toggle = MenuToggleBounds(page_x, network_items_y, network_toggle_style);
 
-    MenuToggleStyle access_point_style = network_toggle_style;
-    access_point_style.bottom_border_thickness = 0;
     const UiRect access_point_toggle =
-        MenuToggleBounds(page_x, wifi_toggle.bottom(), access_point_style);
+        MenuToggleBounds(page_x, wifi_toggle.bottom(), network_toggle_style);
 
-    const int storage_heading_y = access_point_toggle.bottom() + kSectionGap;
+    MenuToggleStyle sound_style = network_toggle_style;
+    sound_style.bottom_border_thickness = 0;
+    const UiRect sound_toggle =
+        MenuToggleBounds(page_x, access_point_toggle.bottom(), sound_style);
+
+    const int storage_heading_y = sound_toggle.bottom() + kSectionGap;
     SdStatusStyle storage_style = {};
     storage_style.max_width = page_width;
     const UiRect storage_status = SdStatusBounds(page_x,
@@ -78,6 +82,7 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
     return {
         .wifi_toggle = wifi_toggle,
         .access_point_toggle = access_point_toggle,
+        .sound_toggle = sound_toggle,
         .storage_status = storage_status,
         .enable_otg_button = enable_otg_button,
         .format_sd_button = format_sd_button,
@@ -98,6 +103,8 @@ UiRect SettingsPageItemBounds(int portrait_width,
             return layout.wifi_toggle;
         case SettingsPageItemId::kAccessPointToggle:
             return layout.access_point_toggle;
+        case SettingsPageItemId::kSoundToggle:
+            return layout.sound_toggle;
         case SettingsPageItemId::kEnableOtgButton:
             return layout.enable_otg_button;
         case SettingsPageItemId::kFormatSdButton:
@@ -132,6 +139,7 @@ bool HitTestSettingsPageItem(int portrait_width,
     constexpr SettingsPageItemId kItems[] = {
         SettingsPageItemId::kWifiToggle,
         SettingsPageItemId::kAccessPointToggle,
+        SettingsPageItemId::kSoundToggle,
         SettingsPageItemId::kEnableOtgButton,
         SettingsPageItemId::kFormatSdButton,
         SettingsPageItemId::kManualOnboardingButton,
@@ -198,7 +206,7 @@ void DrawSettingsPage(uint8_t* framebuffer,
                        portrait_height,
                        title_x,
                        layout.wifi_toggle.y - kNetworkHeadingGap - LineHeight(kSectionRole),
-                       "Rede",
+                       "Geral",
                        kSectionRole,
                        design::color::kBlack);
 
@@ -215,8 +223,6 @@ void DrawSettingsPage(uint8_t* framebuffer,
                    state.wifi_toggle,
                    wifi_style);
 
-    MenuToggleStyle access_point_style = wifi_style;
-    access_point_style.bottom_border_thickness = 0;
     DrawMenuToggle(framebuffer,
                    raw_width,
                    raw_height,
@@ -225,7 +231,19 @@ void DrawSettingsPage(uint8_t* framebuffer,
                    layout.access_point_toggle.x,
                    layout.access_point_toggle.y,
                    state.access_point_toggle,
-                   access_point_style);
+                   wifi_style);
+
+    MenuToggleStyle sound_style = wifi_style;
+    sound_style.bottom_border_thickness = 0;
+    DrawMenuToggle(framebuffer,
+                   raw_width,
+                   raw_height,
+                   portrait_width,
+                   portrait_height,
+                   layout.sound_toggle.x,
+                   layout.sound_toggle.y,
+                   state.sound_toggle,
+                   sound_style);
 
     DrawTypographyText(framebuffer,
                        raw_width,

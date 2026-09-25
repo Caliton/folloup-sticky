@@ -11,6 +11,7 @@
 #include "notes_page_interactions.h"
 #include "notes_page_runtime.h"
 #include "books_page_runtime.h"
+#include "feedback_service.h"
 #include "reader_page_runtime.h"
 #include "onboarding_page_interactions.h"
 #include "onboarding_page_runtime.h"
@@ -267,6 +268,10 @@ ButtonResult ApplySettingsActivateResult(const settings_page_interactions::Activ
     callbacks.toggle_wifi = []() {
         const wifi_service::UiState state = wifi_service::GetUiState();
         wifi_service::SetWifiEnabled(!state.wifi_enabled);
+    };
+    callbacks.toggle_sound = []() {
+        feedback_service::SetSoundEnabled(!feedback_service::IsSoundEnabled());
+        ApplySettingsPageStateUpdate(display_service::RefreshMode::kPartial);
     };
     callbacks.toggle_access_point = []() {
         const wifi_service::UiState state = wifi_service::GetUiState();

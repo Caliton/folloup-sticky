@@ -7,6 +7,7 @@
 #include <driver/gpio.h>
 #include <esp_codec_dev.h>
 #include <esp_codec_dev_defaults.h>
+#include <esp_timer.h>
 #include <mutex>
 
 class Es8311Codec : public AudioCodec {
@@ -20,7 +21,14 @@ private:
     gpio_num_t pa_pin_ = GPIO_NUM_NC;
     bool pa_inverted_ = false;
     bool channels_enabled_ = false;
+    // Output is powered (codec open, PA on) only while writes keep arriving.
+    bool output_powered_ = false;
+    int writes_in_flight_ = 0;
+    esp_timer_handle_t output_idle_timer_ = nullptr;
+    static constexpr uint64_t kOutputIdlePowerDownUs = 2000000;
     std::mutex data_if_mutex_;
+
+    void OnOutputIdle();
 
     void CreateDuplexChannels(gpio_num_t mclk, gpio_num_t bclk, gpio_num_t ws, gpio_num_t dout,
                               gpio_num_t din);

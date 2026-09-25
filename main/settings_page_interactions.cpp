@@ -32,6 +32,13 @@ ActivateResult HandlePrimaryActivate(const SettingsPageCoordinator& coordinator)
             .play_activate_cue = true,
         };
     }
+    if (coordinator.IsRoleFocused(page_navigation::NavigationItemRole::kSettingsSoundToggle)) {
+        return {
+            .intent = ActivateIntent::kToggleSound,
+            .handled = true,
+            .play_activate_cue = true,
+        };
+    }
     if (coordinator.IsRoleFocused(
             page_navigation::NavigationItemRole::kSettingsEnableOtgButton)) {
         return {
@@ -93,6 +100,11 @@ void ApplyPrimaryActivateResult(const ActivateResult& result,
                 callbacks.toggle_wifi();
             }
             return;
+        case ActivateIntent::kToggleSound:
+            if (callbacks.toggle_sound) {
+                callbacks.toggle_sound();
+            }
+            break;
         case ActivateIntent::kToggleAccessPoint:
             if (callbacks.toggle_access_point) {
                 callbacks.toggle_access_point();
