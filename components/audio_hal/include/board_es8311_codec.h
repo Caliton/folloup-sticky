@@ -26,9 +26,13 @@ private:
     int writes_in_flight_ = 0;
     esp_timer_handle_t output_idle_timer_ = nullptr;
     static constexpr uint64_t kOutputIdlePowerDownUs = 2000000;
+    // Silence written after powering the output up, before the first real samples: the
+    // NS4150B and the DAC need a moment to settle, and without it short cues lose their start.
+    static constexpr int kOutputWarmupMs = 80;
     std::mutex data_if_mutex_;
 
     void OnOutputIdle();
+    void WriteSilence(esp_codec_dev_handle_t dev, int ms);
 
     void CreateDuplexChannels(gpio_num_t mclk, gpio_num_t bclk, gpio_num_t ws, gpio_num_t dout,
                               gpio_num_t din);

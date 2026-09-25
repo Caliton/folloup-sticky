@@ -331,8 +331,24 @@ int Es8311Codec::Read(int16_t* dest, int samples) {
     return samples;
 }
 
+// Feeds zeros so the PA and DAC settle before real audio (see kOutputWarmupMs).
+void Es8311Codec::WriteSilence(esp_codec_dev_handle_t dev, int ms) {
+    // const keeps it in flash rather than the (scarce) internal RAM; the I2S driver copies it.
+    static const int16_t kZeros[256] = {};
+    int remaining = output_sample_rate_ * ms / 1000;
+    while (remaining > 0) {
+        const int chunk = remaining < 256 ? remaining : 256;
+        if (esp_codec_dev_write(dev, const_cast<int16_t*>(kZeros), chunk * sizeof(int16_t)) !=
+            ESP_CODEC_DEV_OK) {
+            return;
+        }
+        remaining -= chunk;
+    }
+}
+
 int Es8311Codec::Write(const int16_t* data, int samples) {
     esp_codec_dev_handle_t dev = nullptr;
+    bool warm_up = false;
     {
         std::lock_guard<std::mutex> lock(data_if_mutex_);
         if (!output_enabled_ || codec_if_ == nullptr) {
@@ -341,6 +357,7 @@ int Es8311Codec::Write(const int16_t* data, int samples) {
         if (!output_powered_) {
             output_powered_ = true;
             UpdateDeviceState();
+            warm_up = true;
         }
         // Power down kOutputIdlePowerDownUs after the last write of a cue or clip.
         esp_timer_stop(output_idle_timer_);
@@ -350,6 +367,9 @@ int Es8311Codec::Write(const int16_t* data, int samples) {
         }
         dev = dev_;
         ++writes_in_flight_;
+    }
+    if (warm_up) {
+        WriteSilence(dev, kOutputWarmupMs);
     }
     int ret = esp_codec_dev_write(dev, (void*)data, samples * sizeof(int16_t));
     {
