@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "button_input_runtime.h"
+#include "input_callback_dispatcher.h"
 #include "button_service.h"
 #include "device_sleep_service.h"
 #include "device_sleep_runtime.h"
@@ -1498,7 +1499,25 @@ void HandlePowerKeyPress(power_key_runtime::Press press, void*)
         return;
     }
 
-    // Don't toggle the lock underneath a shutdown confirmation the user is answering.
+    // A single tap is "back": the same gesture as holding the rocker down, which every screen
+    // and overlay already treats as "leave what you entered". It is routed through the input
+    // dispatcher so it runs on the input task like a real button event. Locked, it does
+    // nothing -- the device lives in a pocket, and only a double tap unlocks it.
+    if (press == power_key_runtime::Press::kShort) {
+        if (lock_screen_runtime::IsActive()) {
+            return;
+        }
+        const button_service::ButtonEventInfo back = {
+            .button = button_service::ButtonId::kDown,
+            .event = button_service::ButtonEvent::kLongPressStart,
+            .pressed_ms = 0,
+        };
+        InputCallbackDispatcher::GetInstance().Dispatch(
+            [back]() { HandleDispatchedButtonEvent(back); });
+        return;
+    }
+
+    // Double tap: lock / unlock. Not underneath a shutdown confirmation being answered.
     if (overlay_runtime::IsShutdownModalVisible()) {
         return;
     }

@@ -496,10 +496,13 @@ Current app-level button interactions are:
   timeline item list on the Summarize / Notes / Todos / Follow-up pages, the WiFi
   network list, or the sticky-note transcript scroll. It is a no-op at the app
   level. (This replaced the former `DOWN` double-click exit.)
-- A short press of the `PWR` key toggles the lock screen; a ~1s hold opens the
-  shutdown confirmation modal. `PWR` is not a GPIO button: both arrive as AXP2101
-  interrupts, decoded by `main/power_key_runtime`. A sustained 6s hold bypasses
-  firmware entirely and the PMIC cuts the rails.
+- A single tap of the `PWR` key is "back": it dispatches the same hold-`DOWN`
+  gesture. A double tap (two taps within 400 ms) toggles the lock screen; while
+  locked a single tap does nothing. A ~1s hold opens the shutdown confirmation
+  modal. `PWR` is not a GPIO button: all of these arrive as AXP2101 interrupts,
+  decoded by `main/power_key_runtime`, which holds a single tap until the
+  double-tap window closes. A sustained 6s hold bypasses firmware entirely and
+  the PMIC cuts the rails.
 - The rocker middle key has no double-click or long-press action. Lock and
   shutdown moved to `PWR`; recording is exclusive to `BOOT`.
 - Pressing and holding `BOOT` arms then starts the recording-session flow;
@@ -1014,7 +1017,8 @@ Current app-shell usage on top of those low-level events is:
 - `BOOT` or rocker-middle `FN` single click: activate / submit the focused item
 - hold `DOWN` (long-press): app-wide "exit an entered control" gesture, handled
   per screen (no-op at the app level; replaced the former `DOWN` double-click)
-- short `PWR` press: toggle the lock screen (an AXP2101 interrupt, not a GPIO button)
+- single `PWR` tap: back (dispatches the hold-`DOWN` gesture; ignored while locked)
+- double `PWR` tap: toggle the lock screen (AXP2101 interrupts, not a GPIO button)
 - ~1s `PWR` hold: open the shutdown confirmation modal
 - hold `BOOT`: arm/start/finish the recording-session flow
 - select modal visible: `UP` and `DOWN` press down plus gated hold-repeat move

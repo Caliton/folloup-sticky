@@ -7,11 +7,16 @@
 
 namespace power_key_runtime {
 
-// The AXP2101 power key, decoded into the two presses the firmware acts on. A sustained
-// 6s hold never reaches here: the PMIC cuts the rails itself, so it stays a hardware
-// escape hatch independent of anything running.
+// The AXP2101 power key, decoded into the presses the firmware acts on. A sustained 6s hold
+// never reaches here: the PMIC cuts the rails itself, so it stays a hardware escape hatch
+// independent of anything running.
+//
+// kShort is only reported once the double-tap window has passed without a second tap, so
+// a single tap arrives kDoubleTapWindowMs late; two taps inside the window arrive as one
+// kDouble instead.
 enum class Press : uint8_t {
     kShort,
+    kDouble,
     kLong,
 };
 

@@ -64,7 +64,7 @@ void ConfigurePmicRails(Axp2101* pmic)
     // Hardware power key. Three behaviors layered on one physical key:
     //   - 1s hold from off powers the board on.
     //   - Short press and >=1s press each raise a distinct IRQ that the firmware owns
-    //     (lock-screen toggle and shutdown confirmation respectively).
+    //     (back / double-tap lock, and shutdown confirmation respectively).
     //   - A sustained 6s hold lets the PMIC hard-cut the rails, so there is always a
     //     hardware escape even if the firmware is wedged.
     // IrqLevelTime is what separates the short IRQ from the long one, so it has to sit

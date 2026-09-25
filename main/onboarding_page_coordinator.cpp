@@ -22,11 +22,11 @@ constexpr std::array<Slide, 6> kSlides = {{
      EmbeddedImageId::kSlide1},
     // Controls of the Waveshare ESP32-S3-ePaper-3.97: rocker (up/down/press), BOOT, PWR.
     {"Grave e bloqueie",
-     "Segure o BOOT para gravar uma nota, ideia ou tarefa e solte para parar. Toque no PWR "
-     "para bloquear a tela.",
+     "Segure o BOOT para gravar uma nota, ideia ou tarefa e solte para parar. Toque duas "
+     "vezes no PWR para bloquear.",
      EmbeddedImageId::kSlide2},
     {"Navegue pela alavanca",
-     "Mova a alavanca para subir ou descer e aperte para selecionar. Segure para baixo para "
+     "Mova a alavanca para subir ou descer e aperte para selecionar. Toque no PWR para "
      "voltar.",
      EmbeddedImageId::kSlide3},
     {"Repouso e energia",

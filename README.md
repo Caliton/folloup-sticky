@@ -93,15 +93,16 @@ O Followup é controlado inteiramente pelos três controles físicos: a alavanca
 | Controle | Ação |
 | --- | --- |
 | Alavanca para cima / para baixo | Move a seleção; segure para repetir |
-| Alavanca para baixo, segurada | Sai de uma lista ou de um cartão em que você entrou |
+| Alavanca para baixo, segurada | Volta: sai de uma lista ou de um cartão em que você entrou |
 | Apertar a alavanca | Seleciona / confirma |
 | BOOT, toque | Seleciona / confirma |
 | BOOT, segurado | Grava: começa quando você segura e para quando solta |
-| PWR, toque | Bloqueia ou desbloqueia a tela |
+| PWR, toque | Volta (o mesmo que segurar a alavanca para baixo) |
+| PWR, dois toques rápidos | Bloqueia ou desbloqueia a tela |
 | PWR, segurado ~1 s | Abre a confirmação de desligar |
 | PWR, segurado 6 s | Desliga direto pelo PMIC (desligamento forçado) |
 
-Gravar é exclusivo do BOOT, então nenhum outro controle começa ou para uma gravação por acidente. Segurar o PWR por 6 segundos passa por cima do firmware e sempre corta a energia.
+Gravar é exclusivo do BOOT, então nenhum outro controle começa ou para uma gravação por acidente. Com a tela bloqueada, um toque no PWR não faz nada: só os dois toques desbloqueiam, para nada mudar com o aparelho no bolso. Segurar o PWR por 6 segundos passa por cima do firmware e sempre corta a energia.
 
 No leitor de livros:
 
