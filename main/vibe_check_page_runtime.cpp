@@ -310,7 +310,7 @@ void PinCurrentIdea()
         ESP_LOGW(kTag, "Pin idea failed: id=%s", recording_id.c_str());
         epaper_ui::ToastState toast = {};
         toast.visible = true;
-        toast.body_text = "Erro ao acompanhar. Tente de novo";
+        toast.body_text = "Erro ao guardar a ideia. Tente de novo";
         toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kCheck);
         (void)overlay_runtime::ShowToastForDuration(toast, 2000);
         return;

@@ -17,7 +17,6 @@
 #include "epaper_ui/toast.h"
 #include "epaper_ui/dashboard_page.h"
 #include "epaper_ui/details_page.h"
-#include "epaper_ui/follow_up_page.h"
 #include "epaper_ui/notes_page.h"
 #include "epaper_ui/onboarding_page.h"
 #include "epaper_ui/summarize_page.h"
@@ -88,7 +87,6 @@ epaper_ui::VibeCheckPageState s_vibe_check_page_state = {};
 epaper_ui::SummarizePageState s_summarize_page_state = {};
 epaper_ui::NotesPageState s_notes_page_state = {};
 epaper_ui::JournalPageState s_journal_page_state = {};
-epaper_ui::FollowUpPageState s_follow_up_page_state = {};
 epaper_ui::DetailsPageState s_details_page_state = {};
 epaper_ui::OnboardingPageState s_onboarding_page_state = {};
 epaper_ui::BooksPageState s_books_page_state = {};
@@ -113,7 +111,6 @@ struct RenderSnapshot {
     epaper_ui::SummarizePageState summarize_page = {};
     epaper_ui::NotesPageState notes_page = {};
     epaper_ui::JournalPageState journal_page = {};
-    epaper_ui::FollowUpPageState follow_up_page = {};
     epaper_ui::DetailsPageState details_page = {};
     epaper_ui::OnboardingPageState onboarding_page = {};
     epaper_ui::BooksPageState books_page = {};
@@ -190,7 +187,6 @@ const RenderSnapshot& CaptureRenderSnapshot()
     snapshot.summarize_page = s_summarize_page_state;
     snapshot.notes_page = s_notes_page_state;
     snapshot.journal_page = s_journal_page_state;
-    snapshot.follow_up_page = s_follow_up_page_state;
     snapshot.details_page = s_details_page_state;
     snapshot.onboarding_page = s_onboarding_page_state;
     snapshot.books_page = s_books_page_state;
@@ -455,20 +451,6 @@ void DrawJournalUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
                                snapshot.journal_page,
                                snapshot.status_bar,
                                snapshot.global_footer);
-}
-
-void DrawFollowUpUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
-{
-    EpaperPanel& panel = Panel();
-    panel.Clear(true);
-    epaper_ui::DrawFollowUpPage(framebuffer,
-                                WAVESHARE_EPD_WIDTH,
-                                WAVESHARE_EPD_HEIGHT,
-                                kPortraitWidth,
-                                kPortraitHeight,
-                                snapshot.follow_up_page,
-                                snapshot.status_bar,
-                                snapshot.global_footer);
 }
 
 void DrawOnboardingUnderlay(uint8_t* framebuffer, const RenderSnapshot& snapshot)
@@ -799,30 +781,6 @@ esp_err_t ApplyJournal(RefreshMode refresh_mode)
     return ESP_OK;
 }
 
-esp_err_t ApplyFollowUp(RefreshMode refresh_mode)
-{
-    const RenderSnapshot& snapshot = CaptureRenderSnapshot();
-    EpaperPanel& panel = Panel();
-    DrawFollowUpUnderlay(panel.framebuffer(), snapshot);
-    CaptureUnderlaySnapshot(panel.framebuffer());
-    DrawCurrentOverlays(panel.framebuffer(), snapshot);
-
-    // Publish the screen before driving the panel, not after. The drive takes
-    // seconds, and ScreenActiveForRefresh gates on this value: leaving it stale for
-    // the whole render means an async event arriving mid-transition sees the old
-    // screen, skips merging into this refresh, and lands afterwards as a separate
-    // partial-waveform drive over an image that was already correct.
-    s_current_screen.store(ScreenId::kFollowUp, std::memory_order_relaxed);
-    RefreshBusyGuard refresh_busy;
-    const esp_err_t err = RefreshForMode(panel, refresh_mode);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    LogMetrics(panel.metrics());
-    return ESP_OK;
-}
-
 esp_err_t ApplyOnboarding(RefreshMode refresh_mode)
 {
     const RenderSnapshot& snapshot = CaptureRenderSnapshot();
@@ -1044,9 +1002,6 @@ esp_err_t RefreshCurrentScreenRegionLocked()
         case ScreenId::kJournal:
             DrawJournalUnderlay(panel.framebuffer(), snapshot);
             break;
-        case ScreenId::kFollowUp:
-            DrawFollowUpUnderlay(panel.framebuffer(), snapshot);
-            break;
         case ScreenId::kOnboarding:
             DrawOnboardingUnderlay(panel.framebuffer(), snapshot);
             break;
@@ -1114,8 +1069,6 @@ esp_err_t RefreshCurrentScreenLocked(RefreshMode refresh_mode)
             return ApplyNotes(refresh_mode);
         case ScreenId::kJournal:
             return ApplyJournal(refresh_mode);
-        case ScreenId::kFollowUp:
-            return ApplyFollowUp(refresh_mode);
         case ScreenId::kOnboarding:
             return ApplyOnboarding(refresh_mode);
         case ScreenId::kDetails:
@@ -1219,8 +1172,6 @@ void DisplayTask(void*)
                 err = ApplyNotes(command.refresh_request.refresh_mode);
             } else if (command.screen == ScreenId::kJournal) {
                 err = ApplyJournal(command.refresh_request.refresh_mode);
-            } else if (command.screen == ScreenId::kFollowUp) {
-                err = ApplyFollowUp(command.refresh_request.refresh_mode);
             } else if (command.screen == ScreenId::kOnboarding) {
                 err = ApplyOnboarding(command.refresh_request.refresh_mode);
             } else if (command.screen == ScreenId::kDetails) {
@@ -1466,17 +1417,6 @@ esp_err_t SetJournalPageState(const epaper_ui::JournalPageState& state)
 
     std::lock_guard<std::mutex> lock(s_state_mutex);
     s_journal_page_state = state;
-    return ESP_OK;
-}
-
-esp_err_t SetFollowUpPageState(const epaper_ui::FollowUpPageState& state)
-{
-    if (!s_initialized) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    std::lock_guard<std::mutex> lock(s_state_mutex);
-    s_follow_up_page_state = state;
     return ESP_OK;
 }
 

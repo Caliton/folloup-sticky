@@ -37,7 +37,6 @@
 #include "sdkconfig.h"
 #include "settings_page_runtime.h"
 #include "details_page_runtime.h"
-#include "follow_up_page_runtime.h"
 #include "app_link_runtime.h"
 #include "journal_page_runtime.h"
 #include "journal_period.h"
@@ -179,7 +178,7 @@ footer_runtime::LayoutState FooterLayoutForScreen(display_service::ScreenId scre
     // Home button is always visible, including on the home screen itself (tapping it
     // there does a full-screen refresh via HandleFooterActivate -> ShowHomeScreen(kFull)).
     layout.show_home = true;
-    // Sticky button sits left of Home; it opens the follow-up sticky-note overlay from any page.
+    // Sticky button opens today's journal as sticky notes from any page.
     layout.show_sticky = true;
     layout.show_mic = true;
     return layout;
@@ -409,27 +408,6 @@ esp_err_t ShowJournalScreen(display_service::RefreshMode refresh_mode)
                                              "show_journal_screen");
 }
 
-esp_err_t ShowFollowUpScreen(display_service::RefreshMode refresh_mode)
-{
-    SyncStatusBarState("show_follow_up_screen");
-    page_input_runtime::ResetFocusForScreen(display_service::ScreenId::kFollowUp);
-    footer_runtime::SetLayoutState(FooterLayoutForScreen(display_service::ScreenId::kFollowUp));
-    footer_runtime::SetProjectionState(
-        page_input_runtime::BuildFooterProjectionForScreen(display_service::ScreenId::kFollowUp));
-    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
-    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
-        ESP_LOGW(kTag, "Footer sync before follow-up screen failed: %s",
-                 esp_err_to_name(footer_err));
-    }
-    // Build the timeline from the archive (SD read) before showing.
-    const esp_err_t sync_err = follow_up_page_runtime::SyncFromArchive(false);
-    if (sync_err != ESP_OK && sync_err != ESP_ERR_INVALID_STATE) {
-        ESP_LOGW(kTag, "Follow-up page sync before show failed: %s", esp_err_to_name(sync_err));
-    }
-    return display_service::SetCurrentScreen(display_service::ScreenId::kFollowUp, refresh_mode,
-                                             "show_follow_up_screen");
-}
-
 // Persisted first-run flag. Device/firmware state (not tied to the SD card), so it survives an SD
 // format; a future Settings action can clear it to replay onboarding.
 constexpr const char* kOnboardingNvsNamespace = "app_state";
@@ -546,10 +524,6 @@ void ShowDetailsScreenIfRequested()
     std::string recording_id = notes_page_runtime::ConsumePendingViewDetails();
     DetailsPageSource source = DetailsPageSource::kNotes;
     if (recording_id.empty()) {
-        recording_id = follow_up_page_runtime::ConsumePendingViewDetails();
-        source = DetailsPageSource::kFollowUp;
-    }
-    if (recording_id.empty()) {
         recording_id = journal_page_runtime::ConsumePendingViewDetails();
         source = DetailsPageSource::kJournal;
     }
@@ -573,9 +547,6 @@ void HandleDetailsBackIfRequested()
     switch (details_page_runtime::SourcePage()) {
         case DetailsPageSource::kNotes:
             err = ShowNotesScreen(display_service::RefreshMode::kFull);
-            break;
-        case DetailsPageSource::kFollowUp:
-            err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
             break;
         case DetailsPageSource::kJournal:
             err = ShowJournalScreen(display_service::RefreshMode::kFull);
@@ -637,61 +608,16 @@ esp_err_t ShowTimeScreen(display_service::RefreshMode refresh_mode)
 
 // Gather every follow-up recording (newest first) as sticky-note items, reusing the same content
 // shape as the Follow-up timeline rows.
-std::vector<overlay_runtime::StickyNoteItem> BuildFollowUpStickyItems()
+// Footer "Sticky" action: today's journal on the e-paper, one card per open task / event (plus a
+// review reminder), or a nudge toast when the day is empty.
+void ShowTodayStickyNotes()
 {
-    esp_err_t status = ESP_OK;
-    const std::vector<recording_archive_service::RecordingEntry> entries =
-        recording_archive_service::ListRecordings(&status);
-
-    std::vector<const recording_archive_service::RecordingEntry*> follow_ups;
-    for (const recording_archive_service::RecordingEntry& entry : entries) {
-        if (entry.metadata.follow_up) {
-            follow_ups.push_back(&entry);
-        }
-    }
-    const auto entry_time = [](const recording_archive_service::RecordingEntry* entry) {
-        return entry->metadata.created_unix_seconds > 0 ? entry->metadata.created_unix_seconds
-                                                        : entry->modified_unix_seconds;
-    };
-    std::sort(follow_ups.begin(), follow_ups.end(),
-              [&](const recording_archive_service::RecordingEntry* a,
-                  const recording_archive_service::RecordingEntry* b) {
-                  return entry_time(a) > entry_time(b);
-              });
-
-    std::vector<overlay_runtime::StickyNoteItem> items;
-    items.reserve(follow_ups.size());
-    for (const recording_archive_service::RecordingEntry* entry_ptr : follow_ups) {
-        const recording_archive_service::RecordingEntry& entry = *entry_ptr;
-        const std::string transcript = timeline_format::TrimTranscript(entry.transcript_text);
-        const bool has_transcription = entry.metadata.has_transcript && !transcript.empty();
-
-        overlay_runtime::StickyNoteItem item = {};
-        // Recorded date on top (plain text); the tag sits in the header row, after the pin icon.
-        item.date_text = timeline_format::FormatDateLabel(entry.metadata.created_local_date);
-        item.header.icon_asset = project_assets::GetIcon(
-            has_transcription ? EmbeddedIconId::kTranscribe : EmbeddedIconId::kAudio);
-        item.header.tag_icon_asset = project_assets::GetIcon(EmbeddedIconId::kPin);
-        item.header.tag_text = timeline_format::TagText(entry.metadata.tag);
-        item.header.time_text = timeline_format::FormatTimeLabel(
-            entry.metadata.time_valid, entry.metadata.created_unix_seconds);
-        item.header.minute_seconds_text =
-            timeline_format::FormatDurationLabel(entry.metadata.duration_ms);
-        item.body_text = has_transcription ? transcript : "Acompanhamento só em áudio.";
-        items.push_back(std::move(item));
-    }
-    return items;
-}
-
-// Footer "Sticky" action: show the follow-up notes in the sticky overlay, or a nudge toast when
-// there are none yet.
-void ShowFollowUpStickyNotes()
-{
-    const std::vector<overlay_runtime::StickyNoteItem> items = BuildFollowUpStickyItems();
+    const std::vector<overlay_runtime::StickyNoteItem> items =
+        journal_page_runtime::BuildTodayStickyItems();
     if (items.empty()) {
         epaper_ui::ToastState toast = {};
         toast.visible = true;
-        toast.body_text = "Nada para acompanhar ainda";
+        toast.body_text = "Nada para hoje";
         toast.leading_icon = project_assets::GetIcon(EmbeddedIconId::kPin);
         (void)overlay_runtime::ShowToastForDuration(toast, 2000);
         return;
@@ -727,9 +653,9 @@ app_interaction::InputResult HandleFooterActivate(footer_runtime::FooterFocusIte
             err = ShowJournalScreen(display_service::RefreshMode::kFull);
             break;
         case footer_runtime::FooterFocusItem::kSticky:
-            // Opens the follow-up sticky overlay (or a nudge toast). The overlay owns its own
+            // Opens today's journal as stickies (or a nudge toast). The overlay owns its own
             // refresh + feedback, and there is no underlying screen change, so return directly.
-            ShowFollowUpStickyNotes();
+            ShowTodayStickyNotes();
             return result;
         case footer_runtime::FooterFocusItem::kMic:
         case footer_runtime::FooterFocusItem::kNone:
@@ -795,9 +721,6 @@ bool HandleDashboardMenuItem(int menu_index, void*)
             break;
         case epaper_ui::DashboardMenuItem::kIdeas:
             err = ShowNotesScreen(display_service::RefreshMode::kFull);
-            break;
-        case epaper_ui::DashboardMenuItem::kFollowUp:
-            err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
             break;
         case epaper_ui::DashboardMenuItem::kBooks:
             err = ShowBooksScreen(display_service::RefreshMode::kFull);
@@ -1381,8 +1304,6 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
                 overlay_result.select_modal_selected_index) &&
             !notes_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
-            !follow_up_page_runtime::HandleItemActionSelection(
-                overlay_result.select_modal_selected_index) &&
             !journal_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !app_link_runtime::HandleModalSelection(
@@ -1764,9 +1685,6 @@ void HandleRecordingArchiveEvent(const recording_archive_service::Event&, void*)
     switch (display_service::GetCurrentScreen()) {
         case display_service::ScreenId::kNotes:
             page_err = notes_page_runtime::SyncFromArchive(true);
-            break;
-        case display_service::ScreenId::kFollowUp:
-            page_err = follow_up_page_runtime::SyncFromArchive(true);
             break;
         case display_service::ScreenId::kVibeCheck:
             page_err = vibe_check_page_runtime::SyncFromService(true);

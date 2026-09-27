@@ -39,7 +39,9 @@ postpone / cancel) — the BuJo review.
 ## On the device
 
 - Dashboard menu: **Diário** (badge = pending count), **Ideias** (notes + ideas, with the
-  Checar vibe and Resumir buttons), Acompanhar, Livros. The progress bar follows today's
+  Checar vibe and Resumir buttons), Livros. The footer holds Início, Hoje (this page's day
+  view), Sticky (today's open events/tasks/notes as cards, plus a review reminder) and
+  Configurações. The old Acompanhar (follow-up) page is gone. The progress bar follows today's
   journal tasks. There is no separate task list: the old `todos/` folder is moved once to
   `tarefas_antigas/` on the SD card at boot (out of the app; delete it over OTG if unwanted).
 - OK on the switcher enters it; UP/DOWN flips Ano / Mês / Semana / Dia live; OK or

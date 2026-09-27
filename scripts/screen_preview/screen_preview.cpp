@@ -13,7 +13,6 @@
 #include "epaper_ui/card_modal.h"
 #include "epaper_ui/dashboard_page.h"
 #include "epaper_ui/details_page.h"
-#include "epaper_ui/follow_up_page.h"
 #include "epaper_ui/journal_page.h"
 #include "epaper_ui/global_footer.h"
 #include "epaper_ui/keyboard.h"
@@ -140,7 +139,6 @@ epaper_ui::DashboardPageState Dashboard()
     state.current_progress = {.label_text = "Tarefas de hoje",
                               .status_text = "1/3 concluída",
                               .progress_percent = 33};
-    state.menu.shows_follow_up_badge = true;
     return state;
 }
 
@@ -167,7 +165,6 @@ void SceneDashboardEmpty(uint8_t* fb)
     state.shows_completion_banner = true;
     state.completion_banner = {.icon = EmbeddedIconId::kTaskStart,
                                .message_text = "Grave sua primeira nota com o microfone"};
-    state.menu.shows_follow_up_badge = false;
     DrawDashboard(fb, state);
 }
 
@@ -208,9 +205,9 @@ constexpr Slide kSlides[] = {
     {"Resumos com o Gemini",
      "Conecte o Gemini e deixe o Followup transcrever suas gravações e resumir o seu dia.",
      EmbeddedImageId::kSlide5},
-    {"Notas, tarefas e mais",
-     "Tudo fica agrupado por dia. Veja em Notas, marque tarefas em Tarefas e fixe o que quiser em "
-     "Acompanhar.",
+    {"Diário, ideias e mais",
+     "Planeje no Diário por ano, mês, semana e dia. Ideias ficam em Ideias. O Sticky mostra o seu "
+     "dia na tela.",
      EmbeddedImageId::kSlide6},
 };
 constexpr int kSlideCount = static_cast<int>(sizeof(kSlides) / sizeof(kSlides[0]));
@@ -403,22 +400,6 @@ void SceneNotesSelected(uint8_t* fb)
     state.timeline.selected_item_index = 1;
     epaper_ui::DrawNotesPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
                              StatusBar(), Footer());
-}
-
-void SceneFollowUp(uint8_t* fb)
-{
-    epaper_ui::FollowUpPageState state = {};
-    state.timeline = NotesTimeline();
-    state.timeline.item_label_singular = "acompanhamento";
-    state.timeline.item_label_plural = "acompanhamentos";
-    state.timeline.empty_state_text = "Nada para acompanhar";
-    state.timeline.groups = {
-        {"Hoje",
-         {Item("14:05", "42s", "Ideia",
-               "Fazer um suporte de mesa pro aparelho usando a mesma dobradiça do case.", true)}},
-    };
-    epaper_ui::DrawFollowUpPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
-                                StatusBar(), Footer());
 }
 
 void SceneDetails(uint8_t* fb)
@@ -691,7 +672,6 @@ std::vector<Scene> Scenes()
         {"diario_semana", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kWeek); }},
         {"diario_mes", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kMonth); }},
         {"diario_ano", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kYear); }},
-        {"acompanhar", SceneFollowUp},
         {"detalhes", SceneDetails},
         {"livros", [](uint8_t* fb) { SceneBooks(fb, false); }},
         {"livros_vazio", [](uint8_t* fb) { SceneBooks(fb, true); }},

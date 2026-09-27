@@ -17,8 +17,6 @@ public:
         epaper_ui::ListItemState item = {};
         std::string recording_id = {};
         std::string recording_path = {};
-        bool follow_up = false;
-        bool follow_up_completed = false;
     };
     struct TimelineGroup {
         std::string date_key = {};
@@ -41,8 +39,6 @@ public:
     bool FocusGroupChip(int group_index);
     bool EnterGroupItem(int group_index, int item_index);
     bool FocusRecording(const std::string& recording_id, bool activate_item_list);
-    bool SetEntryFollowUpState(const std::string& recording_id, bool follow_up,
-                               bool follow_up_completed);
 
     epaper_ui::NotesPageState BuildState() const;
 

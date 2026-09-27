@@ -24,11 +24,6 @@ int64_t EntryUnixSeconds(const RecordingEntry& entry)
     return entry.modified_unix_seconds;
 }
 
-const EmbeddedImageAsset* PinIcon()
-{
-    return project_assets::GetIcon(EmbeddedIconId::kPin);
-}
-
 }  // namespace
 
 NotesPageCoordinator::NotesPageCoordinator() = default;
@@ -74,11 +69,8 @@ void NotesPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& record
         TimelineEntry timeline_entry = {};
         timeline_entry.recording_id = entry.recording_id;
         timeline_entry.recording_path = entry.recording_path;
-        timeline_entry.follow_up = entry.metadata.follow_up;
-        timeline_entry.follow_up_completed = entry.metadata.follow_up_completed;
         timeline_entry.item.header.icon_asset = project_assets::GetIcon(
             has_transcription ? EmbeddedIconId::kTranscribe : EmbeddedIconId::kAudio);
-        timeline_entry.item.header.tag_icon_asset = entry.metadata.follow_up ? PinIcon() : nullptr;
         timeline_entry.item.header.time_text = timeline_format::FormatTimeLabel(entry.metadata.time_valid, entry.metadata.created_unix_seconds);
         timeline_entry.item.header.minute_seconds_text =
             timeline_format::FormatDurationLabel(entry.metadata.duration_ms);
@@ -290,22 +282,6 @@ bool NotesPageCoordinator::FocusRecording(const std::string& recording_id, bool 
             entry_index);
     }
     return true;
-}
-
-bool NotesPageCoordinator::SetEntryFollowUpState(const std::string& recording_id, bool follow_up,
-                                                 bool follow_up_completed)
-{
-    for (TimelineGroup& group : timeline_groups_) {
-        for (TimelineEntry& entry : group.entries) {
-            if (entry.recording_id == recording_id) {
-                entry.follow_up = follow_up;
-                entry.follow_up_completed = follow_up_completed;
-                entry.item.header.tag_icon_asset = follow_up ? PinIcon() : nullptr;
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 const NotesPageCoordinator::TimelineEntry* NotesPageCoordinator::SelectedEntry() const

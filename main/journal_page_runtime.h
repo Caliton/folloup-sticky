@@ -3,10 +3,12 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "display_service.h"
 #include "esp_err.h"
 #include "footer_runtime.h"
+#include "overlay_runtime.h"
 #include "page_action_result.h"
 
 // The "Diário" (bullet journal) page: level switcher + timeline over journal_service items.
@@ -66,6 +68,9 @@ struct Summary {
 };
 // Straight from the store (not the page), so the dashboard can use it before the page opens.
 Summary ComputeSummary();
+// The footer Sticky: today's journal on the e-paper -- a review reminder when something is
+// pending, then today's open events, tasks and notes, one card each. Empty when nothing is due.
+std::vector<overlay_runtime::StickyNoteItem> BuildTodayStickyItems();
 
 }  // namespace journal_page_runtime
 

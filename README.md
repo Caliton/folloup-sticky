@@ -37,15 +37,11 @@ Gravações, transcrições e resumos ficam no cartão SD do próprio aparelho. 
 
 Ideias e notas soltas ficam em **Ideias**. Embaixo da lista, **Checar vibe** revisa as ideias uma a uma (nem toda ideia envelhece bem) e **Resumir** gera um resumo das ideias ou da semana do Diário.
 
-### 5. Acompanhe o que importa
+### 5. O seu dia sempre à vista
 
-Marque uma ideia ou nota para acompanhar e ela não sai do seu radar. O Followup ajuda você a manter o foco no que realmente precisa ser feito.
+O botão **Sticky** do rodapé mostra o dia na tela e-paper: os eventos, tarefas e notas de hoje, um por cartão, e um aviso quando há itens para revisar. Como a tela fica sempre ligada e gasta pouca energia, o dia fica à sua frente como um lembrete constante e discreto.
 
-### 6. Seus acompanhamentos como lembretes fixos
-
-Fixe seus acompanhamentos na tela e-paper. Como a tela fica sempre ligada e gasta pouca energia, eles ficam à sua frente como um lembrete constante e discreto.
-
-### 7. Diário (bullet journal)
+### 6. Diário (bullet journal)
 
 Planeje como num bullet journal: **Ano** (o que importa em cada mês), **Mês**, **Semana** e **Dia**. Tarefas, notas e eventos descem de nível em nível até o dia em que você vai fazer: em cada item, "Fazer hoje", "Fazer nesta semana", "Adiar" ou "Devolver". No mês, um item puxado para a semana continua aparecendo, marcado com `» S40`.
 
@@ -55,7 +51,7 @@ Grave direto no Diário e a gravação cai no período que está na tela. Em qua
 
 O planejamento pesado fica no **app web** ([followup-web](https://github.com/Caliton/followup-web)): em *Configurações → Conectar app*, o aparelho mostra um código que você digita no app, e daí em diante os dois se sincronizam sozinhos. Detalhes técnicos em [docs/journal.md](docs/journal.md).
 
-### 8. Livros
+### 7. Livros
 
 Copie arquivos `.epub` para a pasta `books` do cartão SD e abra **Livros** no menu. A biblioteca mostra capa, título, autor e quanto você já leu de cada livro. No leitor:
 
@@ -70,8 +66,8 @@ Copie arquivos `.epub` para a pasta `books` do cartão SD e abra **Livros** no m
 | Ideia | Registre uma faísca por voz e revise depois com o "Checar vibe" |
 | Tarefa | Grave uma tarefa sem usar as mãos e acompanhe até concluir |
 | Nota | Guarde um pensamento ou lembrete rápido, transcrito e resumido |
-| Acompanhamento | Marque o que importa para não sair da sua cabeça |
-| Lembretes fixos | Mostre seus acompanhamentos na tela e-paper, sempre visíveis |
+| Dia na tela | O Sticky deixa o dia de hoje à vista na tela e-paper |
+| Planejamento | Do ano ao dia no Diário, com revisão do que ficou para trás |
 | Resumos | Deixe o Gemini condensar gravações longas num resumo rápido de ler |
 | Livros | Leia EPUBs na tela e-paper, retomando de onde parou |
 

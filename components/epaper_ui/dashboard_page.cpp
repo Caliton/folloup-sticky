@@ -16,7 +16,7 @@ constexpr int kMiddleMenuGap = design::spacing::k8;
 constexpr auto kProgressLabelRole = design::TypographyRole::kLabelSmallBlack;
 
 constexpr std::array<const char*, kDashboardMenuItemCount> kMenuLabels = {
-    "Diário", "Ideias", "Acompanhar", "Livros",
+    "Diário", "Ideias", "Livros",
 };
 
 int PageWidth(int portrait_width)
@@ -106,8 +106,6 @@ bool MenuItemShowsBadge(const DashboardPageMenuState& menu, int index)
     switch (static_cast<DashboardMenuItem>(index)) {
         case DashboardMenuItem::kJournal:
             return menu.shows_journal_badge;
-        case DashboardMenuItem::kFollowUp:
-            return menu.shows_follow_up_badge;
         case DashboardMenuItem::kIdeas:
             return menu.shows_notes_badge;
         default:
@@ -120,8 +118,6 @@ BadgeState MenuItemBadge(const DashboardPageMenuState& menu, int index)
     switch (static_cast<DashboardMenuItem>(index)) {
         case DashboardMenuItem::kJournal:
             return {menu.journal_badge_text, false};
-        case DashboardMenuItem::kFollowUp:
-            return {menu.follow_up_badge_text, false};
         case DashboardMenuItem::kIdeas:
             return {menu.notes_badge_text, false};
         default:

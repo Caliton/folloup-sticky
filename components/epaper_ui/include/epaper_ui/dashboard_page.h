@@ -13,15 +13,14 @@
 
 namespace epaper_ui {
 
-// The dashboard's main menu has four fixed items; Diário / Ideias / Acompanhar can show a
-// badge. Summaries and the vibe check live inside Ideias; tasks live in the Diário.
-inline constexpr int kDashboardMenuItemCount = 4;
+// The dashboard's main menu has three fixed items; Diário / Ideias can show a badge. Summaries
+// and the vibe check live inside Ideias; tasks, events and the day live in the Diário.
+inline constexpr int kDashboardMenuItemCount = 3;
 
 // Fixed slot order of the dashboard menu (must match kMenuLabels in dashboard_page.cpp).
 enum class DashboardMenuItem : int {
     kJournal = 0,
     kIdeas,
-    kFollowUp,
     kBooks,
 };
 
@@ -30,9 +29,7 @@ struct DashboardPageMenuState {
     // Journal badge: items waiting for review ("3 pendentes").
     bool shows_journal_badge = false;
     std::string journal_badge_text = {};
-    bool shows_follow_up_badge = false;
     bool shows_notes_badge = false;
-    std::string follow_up_badge_text = "Novo";
     std::string notes_badge_text = "Novo";
 
     bool operator==(const DashboardPageMenuState& other) const = default;

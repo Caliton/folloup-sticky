@@ -226,8 +226,6 @@ void DetailsPageCoordinator::ApplyEntry(const RecordingEntry& entry)
     recording_header_ = {};
     recording_header_.icon_asset = project_assets::GetIcon(
         has_transcript_ ? EmbeddedIconId::kTranscribe : EmbeddedIconId::kAudio);
-    recording_header_.tag_icon_asset =
-        entry.metadata.follow_up ? project_assets::GetIcon(EmbeddedIconId::kPin) : nullptr;
     recording_header_.time_text = FormatTimeLabel(entry);
     recording_header_.minute_seconds_text = FormatDurationLabel(entry.metadata.duration_ms);
     recording_header_.tag_text = TagText(entry.metadata.tag);

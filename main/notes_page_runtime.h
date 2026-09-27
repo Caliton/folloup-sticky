@@ -57,14 +57,9 @@ struct SelectedEntrySnapshot {
     bool valid = false;
     std::string recording_id = {};
     std::string recording_path = {};
-    bool follow_up = false;
-    bool follow_up_completed = false;
 };
 SelectedEntrySnapshot GetSelectedEntrySnapshot();
 
-// Optimistically reflect a follow-up change from the modal and repaint.
-void SetEntryFollowUpState(const std::string& recording_id, bool follow_up,
-                           bool follow_up_completed);
 
 }  // namespace notes_page_runtime
 

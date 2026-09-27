@@ -13,7 +13,6 @@
 enum class DetailsPageSource : uint8_t {
     kUnknown = 0,
     kNotes,
-    kFollowUp,
     kJournal,
 };
 

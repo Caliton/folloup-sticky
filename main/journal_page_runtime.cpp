@@ -12,6 +12,7 @@
 #include "journal_view.h"
 #include "overlay_runtime.h"
 #include "page_navigation/page_focus_projection.h"
+#include "project_assets.h"
 #include "recording_archive_service.h"
 #include "ui_refresh_runtime.h"
 
@@ -465,6 +466,58 @@ Summary ComputeSummary()
         }
     }
     return summary;
+}
+
+std::vector<overlay_runtime::StickyNoteItem> BuildTodayStickyItems()
+{
+    std::vector<overlay_runtime::StickyNoteItem> cards;
+    journal_period::Date today = {};
+    if (!journal_period::Today(&today)) {
+        return cards;
+    }
+    const std::string today_key = journal_period::DayKey(today);
+    const std::string today_label = journal_period::Label(today_key, today);  // "Hoje"
+    const journal_service::ItemList items = journal_service::ListItems();
+
+    int pending = 0;
+    for (const journal_service::Item& item : items) {
+        if (journal_service::IsPending(item, today)) {
+            ++pending;
+        }
+    }
+    if (pending > 0) {
+        overlay_runtime::StickyNoteItem card = {};
+        card.date_text = today_label;
+        card.header.tag_text = "Revisar";
+        card.body_text = std::to_string(pending) +
+                         (pending == 1 ? " item de dias anteriores espera"
+                                       : " itens de dias anteriores esperam") +
+                         " revisão em Diário > Pendentes.";
+        cards.push_back(std::move(card));
+    }
+
+    // Events first (they happen at a time), then tasks, then notes; creation order within each.
+    for (journal_service::ItemType type :
+         {journal_service::ItemType::kEvent, journal_service::ItemType::kTask,
+          journal_service::ItemType::kNote}) {
+        for (const journal_service::Item& item : items) {
+            const bool due_today =
+                item.period.size() == today_key.size() &&
+                today_key.compare(0, today_key.size(), item.period.data(), item.period.size()) == 0;
+            if (!due_today || item.type != type || item.status != journal_service::ItemStatus::kOpen) {
+                continue;
+            }
+            overlay_runtime::StickyNoteItem card = {};
+            card.date_text = today_label;
+            card.header.icon_asset = item.recording_id.empty()
+                                         ? nullptr
+                                         : project_assets::GetIcon(EmbeddedIconId::kAudio);
+            card.header.tag_text = journal_service::TypeLabel(item.type);
+            card.body_text = std::string(item.text.data(), item.text.size());
+            cards.push_back(std::move(card));
+        }
+    }
+    return cards;
 }
 
 }  // namespace journal_page_runtime

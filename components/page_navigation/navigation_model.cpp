@@ -151,7 +151,7 @@ NavigationModel BuildDashboardPageNavigationModel()
     NavigationModel model = {};
     model.scope = NavigationScope::kDashboard;
 
-    constexpr int kDashboardMenuItems = 4;  // epaper_ui::kDashboardMenuItemCount
+    constexpr int kDashboardMenuItems = 3;  // epaper_ui::kDashboardMenuItemCount
     for (int index = 0; index < kDashboardMenuItems; ++index) {
         AddItem(model, NavigationItemSection::kDashboardPageMenu,
                 NavigationItemRole::kDashboardMenuItem, index);
@@ -209,23 +209,6 @@ NavigationModel BuildNotesPageNavigationModel(int timeline_group_count)
             NavigationItemRole::kNotesPageVibeCheckButton, 0);
     AddItem(model, NavigationItemSection::kNotesPageTimelineGroups,
             NavigationItemRole::kNotesPageSummarizeButton, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    return model;
-}
-
-NavigationModel BuildFollowUpPageNavigationModel(int timeline_group_count)
-{
-    NavigationModel model = {};
-    model.scope = NavigationScope::kFollowUp;
-
-    const int group_count = timeline_group_count > 0 ? timeline_group_count : 0;
-    for (int index = 0; index < group_count; ++index) {
-        AddItem(model, NavigationItemSection::kFollowUpPageTimelineGroups,
-                NavigationItemRole::kFollowUpPageTimelineGroup, index);
-    }
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);

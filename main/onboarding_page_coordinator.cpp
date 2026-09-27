@@ -36,9 +36,9 @@ constexpr std::array<Slide, 6> kSlides = {{
     {"Resumos com o Gemini",
      "Conecte o Gemini e deixe o Followup transcrever suas gravações e resumir o seu dia.",
      EmbeddedImageId::kSlide5},
-    {"Notas, tarefas e mais",
-     "Tudo fica agrupado por dia. Veja em Notas, marque tarefas em Tarefas e fixe o que quiser em "
-     "Acompanhar.",
+    {"Diário, ideias e mais",
+     "Planeje no Diário por ano, mês, semana e dia. Ideias ficam em Ideias. O Sticky mostra o seu "
+     "dia na tela.",
      EmbeddedImageId::kSlide6},
 }};
 

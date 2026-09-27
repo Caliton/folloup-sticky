@@ -24,7 +24,6 @@ constexpr int32_t kItemIndexMask = (1 << kItemIndexBits) - 1;
 enum class ItemAction : uint8_t {
     kPlayRecording,
     kViewDetails,
-    kFollowUp,
     kTurnToTask,
     kDelete,
     kClose,
@@ -247,20 +246,8 @@ SelectedEntrySnapshot GetSelectedEntrySnapshot()
         snapshot.valid = true;
         snapshot.recording_id = entry->recording_id;
         snapshot.recording_path = entry->recording_path;
-        snapshot.follow_up = entry->follow_up;
-        snapshot.follow_up_completed = entry->follow_up_completed;
     }
     return snapshot;
-}
-
-void SetEntryFollowUpState(const std::string& recording_id, bool follow_up,
-                           bool follow_up_completed)
-{
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_coordinator.SetEntryFollowUpState(recording_id, follow_up, follow_up_completed);
-    }
-    (void)UpdateDisplayStateAndRequestRefresh(display_service::RefreshMode::kPartial);
 }
 
 bool ShowItemActionsModal()
@@ -276,8 +263,6 @@ bool ShowItemActionsModal()
             .valid = true,
             .recording_id = entry->recording_id,
             .recording_path = entry->recording_path,
-            .follow_up = entry->follow_up,
-            .follow_up_completed = entry->follow_up_completed,
         };
         s_item_actions.clear();
         modal.title_text = "Nota";
@@ -289,8 +274,6 @@ bool ShowItemActionsModal()
         }
         modal.items.push_back({"Ver detalhes"});
         s_item_actions.push_back(ItemAction::kViewDetails);
-        modal.items.push_back({entry->follow_up ? "Parar de acompanhar" : "Acompanhar"});
-        s_item_actions.push_back(ItemAction::kFollowUp);
         modal.items.push_back({"Virar tarefa"});
         s_item_actions.push_back(ItemAction::kTurnToTask);
         modal.items.push_back({"Excluir"});
@@ -339,17 +322,6 @@ bool HandleItemActionSelection(int selected_index)
         case ItemAction::kViewDetails: {
             std::lock_guard<std::mutex> lock(s_mutex);
             s_pending_view_details_id = entry.recording_id;
-            break;
-        }
-        case ItemAction::kFollowUp: {
-            const bool next_follow_up = !entry.follow_up;
-            // Optimistic repaint, then persist; revert on failure.
-            SetEntryFollowUpState(entry.recording_id, next_follow_up, false);
-            if (!recording_archive_service::MarkRecordingFollowUp(entry.recording_id,
-                                                                  next_follow_up, false)) {
-                SetEntryFollowUpState(entry.recording_id, entry.follow_up,
-                                      entry.follow_up_completed);
-            }
             break;
         }
         // No explicit SyncFromArchive here (or below): the archive mutators notify

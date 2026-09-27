@@ -169,9 +169,7 @@ epaper_ui::DashboardPageState DashboardPageCoordinator::BuildState() const
     state.menu.selected_index = FocusedMenuIndex();
     state.menu.shows_journal_badge = journal_pending_ > 0;
     state.menu.journal_badge_text = std::to_string(journal_pending_);
-    state.menu.shows_follow_up_badge = archive_.follow_up_recording_count > 0;
     state.menu.shows_notes_badge = archive_.notes_recording_count > 0;
-    state.menu.follow_up_badge_text = std::to_string(archive_.follow_up_recording_count);
     state.menu.notes_badge_text = std::to_string(archive_.notes_recording_count);
     return state;
 }
