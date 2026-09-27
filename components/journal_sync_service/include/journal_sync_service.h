@@ -11,8 +11,9 @@
 // user types in the web app, then pulls documents newer than its cursor and pushes its dirty
 // items (last writer wins on updatedAt). See docs/journal.md for the data contract.
 //
-// Network work runs on a short-lived worker task (TLS needs an 8 KB stack in internal RAM), so
-// it only starts while Wi-Fi is up, no transcription is in flight and the heap has room.
+// Network work runs on a persistent worker whose 8 KB stack lives in PSRAM (internal RAM is
+// too fragmented for it); a round only starts while Wi-Fi is up, no transcription is in
+// flight and the internal heap has room for the socket.
 namespace journal_sync_service {
 
 enum class LinkState : uint8_t {

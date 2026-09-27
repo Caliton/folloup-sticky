@@ -19,6 +19,8 @@
 #include "esp_timer.h"
 #include "followup_task_config.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "journal_service.h"
 #include "nvs.h"
@@ -40,9 +42,12 @@ constexpr const char* kNvsRefreshToken = "refresh";
 constexpr const char* kNvsOwnerUid = "owner";
 constexpr const char* kNvsCursor = "cursor";
 
+// The worker's stack lives in PSRAM: internal RAM is scarce and fragments quickly (the largest
+// free block drops below 8 KB after some navigation), so an internal 8 KB stack often could
+// not be allocated at all. TLS buffers and cJSON nodes are in PSRAM too; lwIP still needs a
+// little internal RAM per connection, hence the floor below.
 constexpr uint32_t kTaskStackBytes = 8192;
-// TLS + JSON need headroom beyond the task stack; below this the round is postponed.
-constexpr size_t kMinFreeInternalBytes = 20 * 1024;
+constexpr size_t kMinFreeInternalBytes = 12 * 1024;
 constexpr int kHttpTimeoutMs = 20000;
 constexpr size_t kMaxResponseBytes = 512 * 1024;
 constexpr int64_t kPeriodicSyncUs = 15LL * 60 * 1000 * 1000;
@@ -72,7 +77,12 @@ Credentials s_credentials = {};
 std::string s_id_token = {};
 int64_t s_id_token_expiry_us = 0;
 int64_t s_pair_started_us = 0;
-bool s_task_running = false;
+bool s_task_running = false;  // a round is in progress
+TaskHandle_t s_worker = nullptr;
+// NVS writes disable the flash cache, which a task with a PSRAM stack must never do; the
+// worker hands them to a one-shot esp_timer callback (esp_timer's stack is internal).
+esp_timer_handle_t s_save_timer = nullptr;
+SemaphoreHandle_t s_save_done = nullptr;
 bool s_sync_requested = false;
 bool s_pair_requested = false;
 esp_timer_handle_t s_debounce_timer = nullptr;
@@ -125,8 +135,7 @@ Credentials LoadCredentials()
     return credentials;
 }
 
-// Called from the worker (internal-RAM stack, so flash writes are allowed).
-void SaveCredentials(const Credentials& credentials)
+void WriteCredentials(const Credentials& credentials)
 {
     nvs_handle_t handle = 0;
     if (nvs_open(kNvsNamespace, NVS_READWRITE, &handle) != ESP_OK) {
@@ -146,6 +155,30 @@ void SaveCredentials(const Credentials& credentials)
     put(kNvsCursor, credentials.cursor);
     (void)nvs_commit(handle);
     nvs_close(handle);
+}
+
+Credentials s_save_request = {};
+
+void SaveTimerCallback(void*)
+{
+    WriteCredentials(s_save_request);
+    xSemaphoreGive(s_save_done);
+}
+
+// Persists the credentials from any task: directly when the caller's stack is internal,
+// through the esp_timer task when called from the PSRAM-stack worker.
+void SaveCredentials(const Credentials& credentials)
+{
+    if (xTaskGetCurrentTaskHandle() != s_worker || s_save_timer == nullptr ||
+        s_save_done == nullptr) {
+        WriteCredentials(credentials);
+        return;
+    }
+    s_save_request = credentials;
+    if (esp_timer_start_once(s_save_timer, 0) != ESP_OK ||
+        xSemaphoreTake(s_save_done, pdMS_TO_TICKS(5000)) != pdTRUE) {
+        ESP_LOGW(kTag, "Credential save did not complete");
+    }
 }
 
 std::string DeviceName()
@@ -699,8 +732,7 @@ bool CanRunNow()
     if (transcription_service::GetSnapshot().request_in_flight) {
         return false;  // a Gemini upload owns the network and most of the heap right now
     }
-    return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) >= kMinFreeInternalBytes &&
-           heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) >= kTaskStackBytes + 1024;
+    return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) >= kMinFreeInternalBytes;
 }
 
 void ScheduleIn(int64_t delay_us)
@@ -812,7 +844,7 @@ void RunSync(Credentials* credentials)
     }
 }
 
-void WorkerTask(void*)
+void RunRounds()
 {
     while (true) {
         bool pair = false;
@@ -829,6 +861,7 @@ void WorkerTask(void*)
                 s_snapshot.busy = false;
                 break;
             }
+            s_task_running = true;
             s_snapshot.busy = true;
             credentials = s_credentials;
         }
@@ -863,7 +896,14 @@ void WorkerTask(void*)
         }
     }
     Notify();
-    vTaskDelete(nullptr);
+}
+
+void WorkerTask(void*)
+{
+    for (;;) {
+        (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        RunRounds();
+    }
 }
 
 // Starts the worker if it isn't running and conditions allow; otherwise retries later.
@@ -885,16 +925,8 @@ void KickWorker()
         ScheduleIn(kDebounceUs * 2);
         return;
     }
-    {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_task_running = true;
-    }
-    if (xTaskCreatePinnedToCore(WorkerTask, "journal_sync", kTaskStackBytes, nullptr,
-                                followup_task_config::kPriorityStorage, nullptr,
-                                followup_task_config::kSystemCore) != pdPASS) {
-        std::lock_guard<std::mutex> lock(s_mutex);
-        s_task_running = false;
-        ESP_LOGW(kTag, "Failed to start sync worker");
+    if (s_worker != nullptr) {
+        xTaskNotifyGive(s_worker);
     }
 }
 
@@ -943,9 +975,26 @@ esp_err_t Init()
         .name = "jsync_periodic",
         .skip_unhandled_events = true,
     };
-    if (esp_timer_create(&debounce_args, &s_debounce_timer) != ESP_OK ||
-        esp_timer_create(&periodic_args, &s_periodic_timer) != ESP_OK) {
+    const esp_timer_create_args_t save_args = {
+        .callback = &SaveTimerCallback,
+        .arg = nullptr,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "jsync_save",
+        .skip_unhandled_events = false,
+    };
+    s_save_done = xSemaphoreCreateBinary();
+    if (s_save_done == nullptr || esp_timer_create(&debounce_args, &s_debounce_timer) != ESP_OK ||
+        esp_timer_create(&periodic_args, &s_periodic_timer) != ESP_OK ||
+        esp_timer_create(&save_args, &s_save_timer) != ESP_OK) {
         ESP_LOGW(kTag, "Timer creation failed");
+        return ESP_ERR_NO_MEM;
+    }
+    if (xTaskCreatePinnedToCoreWithCaps(WorkerTask, "journal_sync", kTaskStackBytes, nullptr,
+                                        followup_task_config::kPriorityStorage, &s_worker,
+                                        followup_task_config::kSystemCore,
+                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
+        s_worker = nullptr;
+        ESP_LOGW(kTag, "Failed to start sync worker");
         return ESP_ERR_NO_MEM;
     }
     (void)esp_timer_start_periodic(s_periodic_timer, kPeriodicSyncUs);

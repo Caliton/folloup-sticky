@@ -76,8 +76,10 @@ Firestore document fields (`users/{uid}/items/{id}`): `type`, `text` (≤ 500 ch
 `deleted`, `origin` (`device` / `web`), `serverUpdatedAt` (server timestamp). The
 security rules live in the web repo (`firestore.rules`).
 
-The worker is a short-lived task with an 8 KB internal-RAM stack (TLS); it only starts
-while no transcription is in flight and the internal heap has ≥ 20 KB free. cJSON
+The worker is a persistent task whose 8 KB stack lives in PSRAM (internal RAM fragments
+until no 8 KB block is left); NVS writes, which must not run on a PSRAM stack, are handed
+to a one-shot esp_timer callback. A round only starts while no transcription is in flight
+and the internal heap has ≥ 12 KB free for the socket. cJSON
 allocations prefer PSRAM app-wide (`main/main.cpp`), so a sync page cannot exhaust the
 internal heap. The Firebase project and public web API key are Kconfig options
 (`FOLLOWUP_FIREBASE_PROJECT_ID`, `FOLLOWUP_FIREBASE_API_KEY`).
