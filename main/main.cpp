@@ -67,6 +67,65 @@ void ReportHeap(void*)
 #endif
 }
 
+// Hang detector. Buttons, the heap report and many services run as esp_timer callbacks, so a
+// callback stuck on a lock freezes the whole UI without tripping any watchdog. A 1 s
+// heartbeat timer is checked by a small high-priority task; if it stops for ~20 s while the
+// checker itself runs on schedule (i.e. not across a light sleep), reboot through abort(): the
+// device recovers on its own instead of staying frozen (enable a core dump to see where).
+constexpr uint64_t kHeartbeatPeriodUs = 1000000ULL;
+constexpr TickType_t kHangCheckPeriod = pdMS_TO_TICKS(5000);
+constexpr int64_t kMaxCheckGapUs = 8000000LL;  // longer means we slept; not a hang
+constexpr int kStaleChecksBeforeAbort = 4;
+volatile uint32_t s_heartbeat = 0;
+
+void HeartbeatTick(void*)
+{
+    s_heartbeat = s_heartbeat + 1;
+}
+
+void HangWatchdogTask(void*)
+{
+    uint32_t last_heartbeat = s_heartbeat;
+    int64_t last_check_us = esp_timer_get_time();
+    int stale_checks = 0;
+    for (;;) {
+        vTaskDelay(kHangCheckPeriod);
+        const int64_t now_us = esp_timer_get_time();
+        const uint32_t heartbeat = s_heartbeat;
+        const bool on_schedule = now_us - last_check_us < kMaxCheckGapUs;
+        stale_checks = (heartbeat == last_heartbeat && on_schedule) ? stale_checks + 1 : 0;
+        last_heartbeat = heartbeat;
+        last_check_us = now_us;
+        if (stale_checks >= kStaleChecksBeforeAbort) {
+            esp_rom_printf("[Hang] esp_timer callbacks stalled for ~%d s; rebooting\n",
+                           stale_checks * 5);
+            abort();
+        }
+    }
+}
+
+void StartHangWatchdog()
+{
+    const esp_timer_create_args_t args = {
+        .callback = HeartbeatTick,
+        .arg = nullptr,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "hang_heartbeat",
+        .skip_unhandled_events = true,
+    };
+    esp_timer_handle_t timer = nullptr;
+    if (esp_timer_create(&args, &timer) != ESP_OK ||
+        esp_timer_start_periodic(timer, kHeartbeatPeriodUs) != ESP_OK) {
+        ESP_LOGW(kHeapTag, "Hang heartbeat timer not started");
+        return;
+    }
+    // Above every app task and esp_timer's callbacks' users, below the system tasks.
+    if (xTaskCreatePinnedToCore(HangWatchdogTask, "hang_watchdog", 2048, nullptr, 15, nullptr,
+                                tskNO_AFFINITY) != pdPASS) {
+        ESP_LOGW(kHeapTag, "Hang watchdog task not started");
+    }
+}
+
 void StartHeapReports()
 {
     const esp_timer_create_args_t args = {
@@ -126,6 +185,7 @@ extern "C" void app_main(void)
     cJSON_Hooks json_hooks = {.malloc_fn = &JsonMalloc, .free_fn = &JsonFree};
     cJSON_InitHooks(&json_hooks);
 
+    StartHangWatchdog();
     StartHeapReports();
     app_shell::Run();
     ReportHeap(nullptr);
