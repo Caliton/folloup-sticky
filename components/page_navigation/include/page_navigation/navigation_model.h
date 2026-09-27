@@ -55,6 +55,7 @@ enum class NavigationItemRole : uint8_t {
     kSettingsEnableOtgButton,
     kSettingsFormatSdButton,
     kSettingsManualOnboardingButton,
+    kSettingsAppLinkButton,
     kWifiPageNetworkList,
     kWifiPagePasswordInput,
     kWifiPagePasswordVisibilityButton,

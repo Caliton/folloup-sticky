@@ -1,5 +1,7 @@
 #include "settings_page_coordinator.h"
 
+#include "journal_sync_service.h"
+
 #include <cstdio>
 #include <string>
 
@@ -140,6 +142,23 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
         .label_text = "Manual",
         .selected = IsRoleFocused(
             page_navigation::NavigationItemRole::kSettingsManualOnboardingButton),
+    };
+    std::string_view app_link_label = "Conectar app";
+    switch (journal_sync_service::GetSnapshot().state) {
+        case journal_sync_service::LinkState::kLinked:
+            app_link_label = "App conectado";
+            break;
+        case journal_sync_service::LinkState::kPairing:
+            app_link_label = "Pareando...";
+            break;
+        case journal_sync_service::LinkState::kUnlinked:
+        default:
+            break;
+    }
+    state.app_link_button = {
+        .label_text = app_link_label,
+        .selected =
+            IsRoleFocused(page_navigation::NavigationItemRole::kSettingsAppLinkButton),
     };
     return state;
 }

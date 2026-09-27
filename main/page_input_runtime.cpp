@@ -8,6 +8,7 @@
 #include "details_page_runtime.h"
 #include "follow_up_page_interactions.h"
 #include "follow_up_page_runtime.h"
+#include "app_link_runtime.h"
 #include "journal_page_runtime.h"
 #include "notes_page_interactions.h"
 #include "notes_page_runtime.h"
@@ -321,6 +322,7 @@ ButtonResult ApplySettingsActivateResult(const settings_page_interactions::Activ
         // Deferred so the screen change happens after input dispatch; app_shell polls for it.
         onboarding_page_runtime::RequestManualLaunch();
     };
+    callbacks.open_app_link = []() { app_link_runtime::OpenMenu(); };
     settings_page_interactions::ApplyPrimaryActivateResult(activation, callbacks);
     if (result.footer_item != footer_runtime::FooterFocusItem::kNone) {
         result.interaction_result.play_feedback = false;

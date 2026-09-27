@@ -38,9 +38,11 @@
 #include "settings_page_runtime.h"
 #include "details_page_runtime.h"
 #include "follow_up_page_runtime.h"
+#include "app_link_runtime.h"
 #include "journal_page_runtime.h"
 #include "journal_period.h"
 #include "journal_service.h"
+#include "journal_sync_service.h"
 #include "notes_page_runtime.h"
 #include "books_page_runtime.h"
 #include "reader_page_runtime.h"
@@ -1365,6 +1367,7 @@ void HandleWifiEvent(const wifi_service::Event& event, void*)
     timezone_service::SetNetworkConnected(event.ui_state.connected);
     gemini_service::SetNetworkState(event.ui_state.connected,
                                     event.ui_state.access_point_mode);
+    journal_sync_service::SetNetworkConnected(event.ui_state.connected);
 
     // Region scope, not screen scope. Wi-Fi events fire during and right after the page
     // transition, and a screen-scope partial re-inits the panel and drives it whatever the
@@ -1407,6 +1410,8 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
             !follow_up_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !journal_page_runtime::HandleItemActionSelection(
+                overlay_result.select_modal_selected_index) &&
+            !app_link_runtime::HandleModalSelection(
                 overlay_result.select_modal_selected_index) &&
             !time_page_runtime::HandleSelectModalSubmit(
                 overlay_result.select_modal_selected_index)) {
@@ -1761,6 +1766,11 @@ void InitJournalService()
         ESP_LOGW(kTag, "Journal listener slots exhausted");
     }
     RefreshDashboardJournalSummary(false);
+    journal_sync_service::SetEventHandler(app_link_runtime::HandleSyncEvent, nullptr);
+    const esp_err_t sync_err = journal_sync_service::Init();
+    if (sync_err != ESP_OK) {
+        ESP_LOGW(kTag, "Journal sync init failed: %s", esp_err_to_name(sync_err));
+    }
 }
 
 void HandleRecordingArchiveEvent(const recording_archive_service::Event&, void*)

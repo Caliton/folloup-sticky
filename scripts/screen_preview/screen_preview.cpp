@@ -269,6 +269,7 @@ void SceneSettings(uint8_t* fb)
     state.enable_otg_button = {.label_text = "Ativar OTG"};
     state.format_sd_button = {.label_text = "Formatar cartão SD"};
     state.manual_onboarding_button = {.label_text = "Manual"};
+    state.app_link_button = {.label_text = "Conectar app"};
     epaper_ui::DrawSettingsPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
                                 StatusBar(), Footer(epaper_ui::GlobalFooterItemId::kSettings));
 }
@@ -662,6 +663,16 @@ void SceneJournalActions(uint8_t* fb)
     epaper_ui::DrawSelectModal(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, modal);
 }
 
+void SceneAppLinkCode(uint8_t* fb)
+{
+    SceneSettings(fb);
+    epaper_ui::SelectModalState modal = {};
+    modal.visible = true;
+    modal.title_text = "No app, digite: K7P 2QX";
+    modal.items = {{"Fechar"}, {"Cancelar pareamento"}};
+    epaper_ui::DrawSelectModal(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, modal);
+}
+
 struct Scene {
     std::string name;
     std::function<void(uint8_t*)> draw;
@@ -675,6 +686,7 @@ std::vector<Scene> Scenes()
         {"dashboard_vazio", SceneDashboardEmpty},
         {"bloqueio", SceneLockScreen},
         {"configuracoes", SceneSettings},
+        {"configuracoes_codigo_app", SceneAppLinkCode},
         {"wifi", SceneWifi},
         {"wifi_teclado", SceneWifiKeyboard},
         {"data_hora", SceneTime},

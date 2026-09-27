@@ -73,6 +73,10 @@ NavigationModel BuildSettingsPageNavigationModel()
             NavigationItemSection::kSettingsPageMenu,
             NavigationItemRole::kSettingsManualOnboardingButton,
             5);
+    AddItem(model,
+            NavigationItemSection::kSettingsPageMenu,
+            NavigationItemRole::kSettingsAppLinkButton,
+            6);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);

@@ -26,6 +26,7 @@ struct Layout {
     UiRect enable_otg_button = {};
     UiRect format_sd_button = {};
     UiRect manual_onboarding_button = {};
+    UiRect app_link_button = {};
 };
 
 Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageState& state)
@@ -73,11 +74,18 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
         ButtonBounds(page_x, enable_otg_button.bottom() + kButtonStackGap,
                      state.format_sd_button, format_button_style);
 
+    // Manual and the web-app link share the last row: the page has no room for another one.
+    const int half_width = std::max(0, (page_width - kButtonStackGap) / 2);
     ButtonStyle manual_button_style = {};
-    manual_button_style.width = page_width;
+    manual_button_style.width = half_width;
     const UiRect manual_onboarding_button =
         ButtonBounds(page_x, format_sd_button.bottom() + kButtonStackGap,
                      state.manual_onboarding_button, manual_button_style);
+    ButtonStyle app_link_button_style = {};
+    app_link_button_style.width = page_width - half_width - kButtonStackGap;
+    const UiRect app_link_button =
+        ButtonBounds(page_x + half_width + kButtonStackGap, manual_onboarding_button.y,
+                     state.app_link_button, app_link_button_style);
 
     return {
         .wifi_toggle = wifi_toggle,
@@ -87,6 +95,7 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
         .enable_otg_button = enable_otg_button,
         .format_sd_button = format_sd_button,
         .manual_onboarding_button = manual_onboarding_button,
+        .app_link_button = app_link_button,
     };
 }
 
@@ -111,6 +120,8 @@ UiRect SettingsPageItemBounds(int portrait_width,
             return layout.format_sd_button;
         case SettingsPageItemId::kManualOnboardingButton:
             return layout.manual_onboarding_button;
+        case SettingsPageItemId::kAppLinkButton:
+            return layout.app_link_button;
         case SettingsPageItemId::kNone:
         default:
             return {};
@@ -143,6 +154,7 @@ bool HitTestSettingsPageItem(int portrait_width,
         SettingsPageItemId::kEnableOtgButton,
         SettingsPageItemId::kFormatSdButton,
         SettingsPageItemId::kManualOnboardingButton,
+        SettingsPageItemId::kAppLinkButton,
     };
     for (SettingsPageItemId candidate : kItems) {
         const UiRect bounds =
@@ -308,6 +320,18 @@ void DrawSettingsPage(uint8_t* framebuffer,
                layout.manual_onboarding_button.y,
                state.manual_onboarding_button,
                manual_button_style);
+
+    ButtonStyle app_link_button_style = {};
+    app_link_button_style.width = layout.app_link_button.width;
+    DrawButton(framebuffer,
+               raw_width,
+               raw_height,
+               portrait_width,
+               portrait_height,
+               layout.app_link_button.x,
+               layout.app_link_button.y,
+               state.app_link_button,
+               app_link_button_style);
 
     DrawGlobalFooter(framebuffer,
                      raw_width,

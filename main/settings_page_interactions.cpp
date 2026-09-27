@@ -63,6 +63,13 @@ ActivateResult HandlePrimaryActivate(const SettingsPageCoordinator& coordinator)
             .play_activate_cue = true,
         };
     }
+    if (coordinator.IsRoleFocused(page_navigation::NavigationItemRole::kSettingsAppLinkButton)) {
+        return {
+            .intent = ActivateIntent::kOpenAppLink,
+            .handled = true,
+            .play_activate_cue = true,
+        };
+    }
 
     return {};
 }
@@ -123,6 +130,11 @@ void ApplyPrimaryActivateResult(const ActivateResult& result,
         case ActivateIntent::kShowOnboarding:
             if (callbacks.show_onboarding) {
                 callbacks.show_onboarding();
+            }
+            return;
+        case ActivateIntent::kOpenAppLink:
+            if (callbacks.open_app_link) {
+                callbacks.open_app_link();
             }
             return;
         case ActivateIntent::kNone:

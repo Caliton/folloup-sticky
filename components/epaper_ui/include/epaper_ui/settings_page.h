@@ -20,6 +20,7 @@ enum class SettingsPageItemId : uint8_t {
     kEnableOtgButton,
     kFormatSdButton,
     kManualOnboardingButton,
+    kAppLinkButton,
 };
 
 struct SettingsPageState {
@@ -32,6 +33,8 @@ struct SettingsPageState {
     ButtonState enable_otg_button = {};
     ButtonState format_sd_button = {};
     ButtonState manual_onboarding_button = {};
+    // Pairs the device with the web app; shares the last row with Manual.
+    ButtonState app_link_button = {};
 };
 
 UiRect SettingsPageItemBounds(int portrait_width,

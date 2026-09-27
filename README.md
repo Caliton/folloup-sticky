@@ -45,7 +45,17 @@ Marque uma tarefa ou nota para acompanhar e ela não sai do seu radar. O Followu
 
 Fixe seus acompanhamentos na tela e-paper. Como a tela fica sempre ligada e gasta pouca energia, eles ficam à sua frente como um lembrete constante e discreto.
 
-### 7. Livros
+### 7. Diário (bullet journal)
+
+Planeje como num bullet journal: **Ano** (o que importa em cada mês), **Mês**, **Semana** e **Dia**. Tarefas, notas e eventos descem de nível em nível até o dia em que você vai fazer: em cada item, "Fazer hoje", "Fazer nesta semana", "Adiar" ou "Devolver". No mês, um item puxado para a semana continua aparecendo, marcado com `» S40`.
+
+O que ficou para trás aparece em **Pendentes**, no topo do Dia, para você decidir item por item: fazer hoje, levar para a semana ou para o mês, ou cancelar.
+
+Grave direto no Diário e a gravação cai no período que está na tela. Em qualquer tela, fale quando ("pra amanhã", "semana que vem", "em novembro") e o Gemini arquiva no período certo. Eventos ("reunião...", "consulta...") vão sempre para o Diário.
+
+O planejamento pesado fica no **app web** ([followup-web](https://github.com/Caliton/followup-web)): em *Configurações → Conectar app*, o aparelho mostra um código que você digita no app, e daí em diante os dois se sincronizam sozinhos. Detalhes técnicos em [docs/journal.md](docs/journal.md).
+
+### 8. Livros
 
 Copie arquivos `.epub` para a pasta `books` do cartão SD e abra **Livros** no menu. A biblioteca mostra capa, título, autor e quanto você já leu de cada livro. No leitor:
 

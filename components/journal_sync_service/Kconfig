@@ -1,0 +1,14 @@
+menu "Followup journal sync"
+
+    config FOLLOWUP_FIREBASE_API_KEY
+        string "Firebase web API key"
+        default "AIzaSyCLKXPTbEbtVKtuohlIV0A4KzTbbIXUYRA"
+        help
+            Public web-app key of the Firebase project the journal syncs with (the same value
+            the web app ships). Access is controlled by Firestore security rules, not this key.
+
+    config FOLLOWUP_FIREBASE_PROJECT_ID
+        string "Firebase project id"
+        default "followup-bujo"
+
+endmenu

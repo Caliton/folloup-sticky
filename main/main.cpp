@@ -1,5 +1,7 @@
 #include "app_shell.h"
 
+#include "cJSON.h"
+
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -80,6 +82,19 @@ void StartHeapReports()
     }
 }
 
+// cJSON allocates one small node per JSON value, and malloc puts anything under
+// CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL bytes in internal RAM -- the scarce heap on this board.
+// A Firestore sync page or a Gemini reply easily means thousands of nodes, so prefer PSRAM.
+void* JsonMalloc(size_t size)
+{
+    return heap_caps_malloc_prefer(size, 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT, MALLOC_CAP_8BIT);
+}
+
+void JsonFree(void* pointer)
+{
+    heap_caps_free(pointer);
+}
+
 }  // namespace
 
 extern "C" void app_main(void)
@@ -107,6 +122,9 @@ extern "C" void app_main(void)
         ESP_LOGW(kHeapTag, "esp_pm_configure failed: %s", esp_err_to_name(pm_err));
     }
 #endif
+
+    cJSON_Hooks json_hooks = {.malloc_fn = &JsonMalloc, .free_fn = &JsonFree};
+    cJSON_InitHooks(&json_hooks);
 
     StartHeapReports();
     app_shell::Run();
