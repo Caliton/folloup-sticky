@@ -11,8 +11,7 @@ ActivateResult HandlePrimaryActivate(const SettingsPageCoordinator& coordinator)
             coordinator,
             ActivateIntent::kShowHome,
             ActivateIntent::kForceRefresh,
-            ActivateIntent::kShowWifi,
-            ActivateIntent::kShowTime);
+            ActivateIntent::kShowToday);
     if (footer_result.handled) {
         return footer_result;
     }
@@ -63,6 +62,20 @@ ActivateResult HandlePrimaryActivate(const SettingsPageCoordinator& coordinator)
             .play_activate_cue = true,
         };
     }
+    if (coordinator.IsRoleFocused(page_navigation::NavigationItemRole::kSettingsWifiPageButton)) {
+        return {
+            .intent = ActivateIntent::kOpenWifiPage,
+            .handled = true,
+            .play_activate_cue = true,
+        };
+    }
+    if (coordinator.IsRoleFocused(page_navigation::NavigationItemRole::kSettingsTimePageButton)) {
+        return {
+            .intent = ActivateIntent::kOpenTimePage,
+            .handled = true,
+            .play_activate_cue = true,
+        };
+    }
     if (coordinator.IsRoleFocused(page_navigation::NavigationItemRole::kSettingsAppLinkButton)) {
         return {
             .intent = ActivateIntent::kOpenAppLink,
@@ -87,14 +100,9 @@ void ApplyPrimaryActivateResult(const ActivateResult& result,
                 callbacks.show_home();
             }
             return;
-        case ActivateIntent::kShowWifi:
-            if (callbacks.show_wifi) {
-                callbacks.show_wifi();
-            }
-            return;
-        case ActivateIntent::kShowTime:
-            if (callbacks.show_time) {
-                callbacks.show_time();
+        case ActivateIntent::kShowToday:
+            if (callbacks.show_today) {
+                callbacks.show_today();
             }
             return;
         case ActivateIntent::kForceRefresh:
@@ -135,6 +143,16 @@ void ApplyPrimaryActivateResult(const ActivateResult& result,
         case ActivateIntent::kOpenAppLink:
             if (callbacks.open_app_link) {
                 callbacks.open_app_link();
+            }
+            return;
+        case ActivateIntent::kOpenWifiPage:
+            if (callbacks.open_wifi_page) {
+                callbacks.open_wifi_page();
+            }
+            return;
+        case ActivateIntent::kOpenTimePage:
+            if (callbacks.open_time_page) {
+                callbacks.open_time_page();
             }
             return;
         case ActivateIntent::kNone:

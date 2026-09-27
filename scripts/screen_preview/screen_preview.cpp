@@ -78,9 +78,7 @@ epaper_ui::GlobalFooterState Footer(epaper_ui::GlobalFooterItemId selected =
     state.visible = true;
     state.home = button(GlobalFooterItemId::kHome, EmbeddedIconId::kHome);
     state.settings = button(GlobalFooterItemId::kSettings, EmbeddedIconId::kSettings);
-    state.wifi = button(GlobalFooterItemId::kWifi, EmbeddedIconId::kWifiConfig);
-    state.time = button(GlobalFooterItemId::kTime, EmbeddedIconId::kTime);
-    state.folder = button(GlobalFooterItemId::kFolder, EmbeddedIconId::kFolder);
+    state.today = button(GlobalFooterItemId::kToday, EmbeddedIconId::kTaskStart);
     state.sticky = button(GlobalFooterItemId::kSticky, EmbeddedIconId::kSticky);
     state.mic.visible = true;
     state.mic.selected = selected == GlobalFooterItemId::kMic;
@@ -242,8 +240,10 @@ void SceneSettings(uint8_t* fb)
     state.sound_toggle = {.label_text = "Sons", .toggle_state = epaper_ui::ToggleVisualState::kOn};
     state.storage_status = {.has_sd_card = true, .free_space_text = "12,3 GB", .used_percent = 34};
     state.enable_otg_button = {.label_text = "Ativar OTG"};
-    state.format_sd_button = {.label_text = "Formatar cartão SD"};
+    state.format_sd_button = {.label_text = "Formatar SD"};
     state.manual_onboarding_button = {.label_text = "Manual"};
+    state.wifi_page_button = {.label_text = "Wi-Fi"};
+    state.time_page_button = {.label_text = "Data e hora"};
     state.app_link_button = {.label_text = "Conectar app"};
     epaper_ui::DrawSettingsPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
                                 StatusBar(), Footer(epaper_ui::GlobalFooterItemId::kSettings));
@@ -274,7 +274,7 @@ epaper_ui::WifiPageState Wifi()
 void SceneWifi(uint8_t* fb)
 {
     epaper_ui::DrawWifiPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, Wifi(),
-                            StatusBar(), Footer(epaper_ui::GlobalFooterItemId::kWifi));
+                            StatusBar(), Footer());
 }
 
 void SceneWifiKeyboard(uint8_t* fb)
@@ -308,7 +308,7 @@ void SceneTime(uint8_t* fb)
     state.year = {.value_text = "2026", .placeholder_text = "AAAA", .max_length = 4};
     state.save = {.label_text = "Sincronizar e salvar"};
     epaper_ui::DrawTimePage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
-                            StatusBar(), Footer(epaper_ui::GlobalFooterItemId::kTime));
+                            StatusBar(), Footer());
 }
 
 void SceneTimezoneModal(uint8_t* fb)

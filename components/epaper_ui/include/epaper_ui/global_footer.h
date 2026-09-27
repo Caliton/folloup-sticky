@@ -13,9 +13,7 @@ enum class GlobalFooterItemId : uint8_t {
     kNone = 0,
     kHome,
     kSettings,
-    kWifi,
-    kTime,
-    kFolder,
+    kToday,
     kMic,
     kSticky,
 };
@@ -36,11 +34,10 @@ struct FooterMicState {
 
 struct GlobalFooterState {
     bool visible = false;
+    // Left to right: Home, Today (journal day), Sticky, Settings; the mic status sits apart.
     FooterButtonState home = {};
     FooterButtonState settings = {};
-    FooterButtonState wifi = {};
-    FooterButtonState time = {};
-    FooterButtonState folder = {};
+    FooterButtonState today = {};
     FooterButtonState sticky = {};
     FooterMicState mic = {};
 };

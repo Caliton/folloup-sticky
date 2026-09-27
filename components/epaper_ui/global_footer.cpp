@@ -38,17 +38,15 @@ const EmbeddedImageAsset* ResolveMicActiveIcon(const FooterMicState& mic)
                                       : project_assets::GetIcon(EmbeddedIconId::kMicOn);
 }
 
-std::array<const FooterButtonState*, 6> VisibleButtons(const GlobalFooterState& state,
+std::array<const FooterButtonState*, 4> VisibleButtons(const GlobalFooterState& state,
                                                        int* count_out)
 {
-    std::array<const FooterButtonState*, 6> buttons = {};
-    std::array<VisibleFooterButton, 6> mapped = {{
-        {.item = GlobalFooterItemId::kSettings, .state = &state.settings},
-        {.item = GlobalFooterItemId::kWifi, .state = &state.wifi},
-        {.item = GlobalFooterItemId::kTime, .state = &state.time},
-        {.item = GlobalFooterItemId::kFolder, .state = &state.folder},
-        {.item = GlobalFooterItemId::kSticky, .state = &state.sticky},
+    std::array<const FooterButtonState*, 4> buttons = {};
+    std::array<VisibleFooterButton, 4> mapped = {{
         {.item = GlobalFooterItemId::kHome, .state = &state.home},
+        {.item = GlobalFooterItemId::kToday, .state = &state.today},
+        {.item = GlobalFooterItemId::kSticky, .state = &state.sticky},
+        {.item = GlobalFooterItemId::kSettings, .state = &state.settings},
     }};
     int count = 0;
     for (const VisibleFooterButton& button : mapped) {
@@ -64,18 +62,16 @@ std::array<const FooterButtonState*, 6> VisibleButtons(const GlobalFooterState& 
     return buttons;
 }
 
-std::array<VisibleFooterButton, 6> VisibleFooterButtons(const GlobalFooterState& state,
+std::array<VisibleFooterButton, 4> VisibleFooterButtons(const GlobalFooterState& state,
                                                         int* count_out)
 {
-    std::array<VisibleFooterButton, 6> buttons = {};
+    std::array<VisibleFooterButton, 4> buttons = {};
     int count = 0;
     const VisibleFooterButton candidates[] = {
-        {.item = GlobalFooterItemId::kSettings, .state = &state.settings},
-        {.item = GlobalFooterItemId::kWifi, .state = &state.wifi},
-        {.item = GlobalFooterItemId::kTime, .state = &state.time},
-        {.item = GlobalFooterItemId::kFolder, .state = &state.folder},
-        {.item = GlobalFooterItemId::kSticky, .state = &state.sticky},
         {.item = GlobalFooterItemId::kHome, .state = &state.home},
+        {.item = GlobalFooterItemId::kToday, .state = &state.today},
+        {.item = GlobalFooterItemId::kSticky, .state = &state.sticky},
+        {.item = GlobalFooterItemId::kSettings, .state = &state.settings},
     };
 
     for (const VisibleFooterButton& button : candidates) {
@@ -153,6 +149,17 @@ UiRect MicBounds(int portrait_width, int portrait_height, const GlobalFooterStat
             measured.height};
 }
 
+// Spread the buttons over the button column (sized for six) so a shorter footer doesn't leave
+// them bunched on the left with an empty gap before the mic.
+int SpreadGap(int column_width, int button_count)
+{
+    if (button_count <= 1) {
+        return kButtonGap;
+    }
+    const int free_width = column_width - (button_count * design::global_footer::kButtonSize);
+    return std::max(kButtonGap, free_width / (button_count - 1));
+}
+
 UiRect FooterButtonBounds(int portrait_width,
                           int portrait_height,
                           const GlobalFooterState& state,
@@ -167,7 +174,9 @@ UiRect FooterButtonBounds(int portrait_width,
     const ButtonIconStyle button_style = BuildFooterButtonStyle();
 
     int button_count = 0;
-    const std::array<VisibleFooterButton, 6> buttons = VisibleFooterButtons(state, &button_count);
+    const std::array<VisibleFooterButton, 4> buttons = VisibleFooterButtons(state, &button_count);
+    const int button_size = design::global_footer::kButtonSize;
+    const int spread_gap = SpreadGap(button_cell.width, button_count);
     int cursor_x = button_cell.x;
     for (int index = 0; index < button_count; ++index) {
         const VisibleFooterButton& button = buttons[static_cast<size_t>(index)];
@@ -182,7 +191,7 @@ UiRect FooterButtonBounds(int portrait_width,
         if (button.item == item) {
             return bounds;
         }
-        cursor_x += design::global_footer::kButtonSize + kButtonGap;
+        cursor_x += button_size + spread_gap;
     }
 
     return {};
@@ -252,12 +261,10 @@ bool HitTestGlobalFooterItem(int portrait_width,
     }
 
     constexpr GlobalFooterItemId kItems[] = {
-        GlobalFooterItemId::kSettings,
-        GlobalFooterItemId::kWifi,
-        GlobalFooterItemId::kTime,
-        GlobalFooterItemId::kFolder,
-        GlobalFooterItemId::kSticky,
         GlobalFooterItemId::kHome,
+        GlobalFooterItemId::kToday,
+        GlobalFooterItemId::kSticky,
+        GlobalFooterItemId::kSettings,
         GlobalFooterItemId::kMic,
     };
 
@@ -292,7 +299,8 @@ void DrawGlobalFooter(uint8_t* framebuffer,
     const ButtonIconStyle button_style = BuildFooterButtonStyle();
 
     int button_count = 0;
-    const std::array<const FooterButtonState*, 6> buttons = VisibleButtons(state, &button_count);
+    const std::array<const FooterButtonState*, 4> buttons = VisibleButtons(state, &button_count);
+    const int spread_gap = SpreadGap(button_cell.width, button_count);
     int cursor_x = button_cell.x;
     for (int index = 0; index < button_count; ++index) {
         const FooterButtonState* button = buttons[static_cast<size_t>(index)];
@@ -309,7 +317,7 @@ void DrawGlobalFooter(uint8_t* framebuffer,
                        button_cell.y + std::max(0, (button_cell.height - button_style.size) / 2),
                        {.asset = ResolveButtonIcon(*button), .selected = button->selected},
                        button_style);
-        cursor_x += design::global_footer::kButtonSize + kButtonGap;
+        cursor_x += design::global_footer::kButtonSize + spread_gap;
     }
 
     if (!state.mic.visible) {

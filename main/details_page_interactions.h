@@ -13,8 +13,7 @@ enum class ActivateIntent : uint8_t {
     kNone = 0,
     kShowHome,
     kShowSettings,
-    kShowWifi,
-    kShowTime,
+    kShowToday,
     kShowPreviousPage,
     kTranscribe,
     kPlayRecording,
@@ -32,8 +31,7 @@ using FocusMoveResult = page_actions::FocusMoveOutcome;
 struct ActivateCallbacks {
     std::function<void()> show_home;
     std::function<void()> show_settings;
-    std::function<void()> show_wifi;
-    std::function<void()> show_time;
+    std::function<void()> show_today;
     std::function<void()> show_previous_page;
     std::function<void()> transcribe;
     std::function<void()> play;

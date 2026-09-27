@@ -175,8 +175,7 @@ footer_runtime::LayoutState FooterLayoutForScreen(display_service::ScreenId scre
     footer_runtime::LayoutState layout = {};
     layout.visible = true;
     layout.show_settings = true;
-    layout.show_wifi = true;
-    layout.show_time = true;
+    layout.show_today = true;  // Hoje: the journal's day view
     // Home button is always visible, including on the home screen itself (tapping it
     // there does a full-screen refresh via HandleFooterActivate -> ShowHomeScreen(kFull)).
     layout.show_home = true;
@@ -722,22 +721,16 @@ app_interaction::InputResult HandleFooterActivate(footer_runtime::FooterFocusIte
             result.feedback_cue = app_interaction::FeedbackCue::kClick;
             err = ShowSettingsScreen(display_service::RefreshMode::kFull);
             break;
-        case footer_runtime::FooterFocusItem::kWifi:
+        case footer_runtime::FooterFocusItem::kToday:
             result.play_feedback = true;
             result.feedback_cue = app_interaction::FeedbackCue::kClick;
-            err = ShowWifiScreen(display_service::RefreshMode::kFull);
-            break;
-        case footer_runtime::FooterFocusItem::kTime:
-            result.play_feedback = true;
-            result.feedback_cue = app_interaction::FeedbackCue::kClick;
-            err = ShowTimeScreen(display_service::RefreshMode::kFull);
+            err = ShowJournalScreen(display_service::RefreshMode::kFull);
             break;
         case footer_runtime::FooterFocusItem::kSticky:
             // Opens the follow-up sticky overlay (or a nudge toast). The overlay owns its own
             // refresh + feedback, and there is no underlying screen change, so return directly.
             ShowFollowUpStickyNotes();
             return result;
-        case footer_runtime::FooterFocusItem::kFolder:
         case footer_runtime::FooterFocusItem::kMic:
         case footer_runtime::FooterFocusItem::kNone:
         default:
@@ -749,6 +742,26 @@ app_interaction::InputResult HandleFooterActivate(footer_runtime::FooterFocusIte
                  static_cast<int>(item), esp_err_to_name(err));
     }
     return result;
+}
+
+// The Settings page's Wi-Fi / Data e hora buttons.
+void ShowSettingsTargetIfRequested()
+{
+    esp_err_t err = ESP_OK;
+    switch (settings_page_runtime::ConsumePendingOpen()) {
+        case settings_page_runtime::OpenTarget::kWifi:
+            err = ShowWifiScreen(display_service::RefreshMode::kFull);
+            break;
+        case settings_page_runtime::OpenTarget::kTime:
+            err = ShowTimeScreen(display_service::RefreshMode::kFull);
+            break;
+        case settings_page_runtime::OpenTarget::kNone:
+        default:
+            return;
+    }
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Settings page navigation failed: %s", esp_err_to_name(err));
+    }
 }
 
 // The Ideias page's Checar vibe / Resumir buttons.
@@ -1474,6 +1487,7 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
         HandleOnboardingDismissIfRequested();
         ShowOnboardingFromSettingsIfRequested();
         ShowIdeasTargetIfRequested();
+        ShowSettingsTargetIfRequested();
         FlushOverlayFeedback();
         return;
     }

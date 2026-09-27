@@ -256,11 +256,8 @@ ButtonResult ApplySettingsActivateResult(const settings_page_interactions::Activ
     callbacks.show_home = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kHome;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.force_refresh = []() {
         ApplySettingsPageStateUpdate(display_service::RefreshMode::kFull);
@@ -321,6 +318,12 @@ ButtonResult ApplySettingsActivateResult(const settings_page_interactions::Activ
         onboarding_page_runtime::RequestManualLaunch();
     };
     callbacks.open_app_link = []() { app_link_runtime::OpenMenu(); };
+    callbacks.open_wifi_page = []() {
+        settings_page_runtime::RequestOpen(settings_page_runtime::OpenTarget::kWifi);
+    };
+    callbacks.open_time_page = []() {
+        settings_page_runtime::RequestOpen(settings_page_runtime::OpenTarget::kTime);
+    };
     settings_page_interactions::ApplyPrimaryActivateResult(activation, callbacks);
     if (result.footer_item != footer_runtime::FooterFocusItem::kNone) {
         result.interaction_result.play_feedback = false;
@@ -346,8 +349,8 @@ ButtonResult ApplyWifiActivateResult(const wifi_page_interactions::ActivateResul
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.force_refresh = []() {
         ApplyWifiPageStateUpdate(display_service::RefreshMode::kFull);
@@ -423,11 +426,8 @@ ButtonResult ApplyTimeActivateResult(const time_page_interactions::ActivateResul
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.show_timezone_modal = []() {
         (void)time_page_runtime::ShowTimezoneModal();
@@ -491,11 +491,8 @@ ButtonResult ApplyDashboardActivateResult(
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     dashboard_page_interactions::ApplyPrimaryActivateResult(activation, callbacks);
     if (result.footer_item != footer_runtime::FooterFocusItem::kNone) {
@@ -632,11 +629,8 @@ ButtonResult ApplyVibeCheckActivateResult(
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.enter_card = []() { vibe_check_page_runtime::EnterFocusedCard(); };
     callbacks.refresh_idea = []() { vibe_check_page_runtime::RefreshIdea(); };
@@ -761,11 +755,8 @@ ButtonResult ApplySummarizeActivateResult(
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.toggle_segment = []() { summarize_page_runtime::ToggleSegment(); };
     callbacks.enter_scroll = []() { summarize_page_runtime::EnterScroll(); };
@@ -897,11 +888,8 @@ ButtonResult ApplyNotesActivateResult(const notes_page_interactions::ActivateRes
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.open_item_actions = []() { (void)notes_page_runtime::ShowItemActionsModal(); };
     callbacks.show_vibe_check = []() {
@@ -1167,11 +1155,8 @@ ButtonResult ApplyJournalActivateResult(const journal_page_runtime::ActivateResu
         case journal_page_runtime::ActivateIntent::kShowSettings:
             result.footer_item = footer_runtime::FooterFocusItem::kSettings;
             break;
-        case journal_page_runtime::ActivateIntent::kShowWifi:
-            result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-            break;
-        case journal_page_runtime::ActivateIntent::kShowTime:
-            result.footer_item = footer_runtime::FooterFocusItem::kTime;
+        case journal_page_runtime::ActivateIntent::kShowToday:
+            result.footer_item = footer_runtime::FooterFocusItem::kToday;
             break;
         case journal_page_runtime::ActivateIntent::kOpenItemActions:
             (void)journal_page_runtime::ShowItemActionsModal();
@@ -1305,11 +1290,8 @@ ButtonResult ApplyFollowUpActivateResult(
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     callbacks.open_item_actions = []() { (void)follow_up_page_runtime::ShowItemActionsModal(); };
     follow_up_page_interactions::ApplyPrimaryActivateResult(activation, callbacks);
@@ -1505,11 +1487,8 @@ ButtonResult ApplyDetailsActivateResult(const details_page_interactions::Activat
     callbacks.show_settings = [&result]() {
         result.footer_item = footer_runtime::FooterFocusItem::kSettings;
     };
-    callbacks.show_wifi = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kWifi;
-    };
-    callbacks.show_time = [&result]() {
-        result.footer_item = footer_runtime::FooterFocusItem::kTime;
+    callbacks.show_today = [&result]() {
+        result.footer_item = footer_runtime::FooterFocusItem::kToday;
     };
     // Deferred so the screen change happens after input dispatch returns.
     callbacks.show_previous_page = []() { details_page_runtime::RequestBack(); };

@@ -12,8 +12,7 @@ namespace settings_page_interactions {
 enum class ActivateIntent : uint8_t {
     kNone = 0,
     kShowHome,
-    kShowWifi,
-    kShowTime,
+    kShowToday,
     kForceRefresh,
     kToggleWifi,
     kToggleAccessPoint,
@@ -22,6 +21,8 @@ enum class ActivateIntent : uint8_t {
     kShowFormatSdModal,
     kShowOnboarding,
     kOpenAppLink,
+    kOpenWifiPage,
+    kOpenTimePage,
 };
 
 struct ActivateResult {
@@ -34,8 +35,7 @@ using FocusMoveResult = page_actions::FocusMoveOutcome;
 
 struct ActivateCallbacks {
     std::function<void()> show_home;
-    std::function<void()> show_wifi;
-    std::function<void()> show_time;
+    std::function<void()> show_today;
     std::function<void()> force_refresh;
     std::function<void()> toggle_wifi;
     std::function<void()> toggle_access_point;
@@ -44,6 +44,8 @@ struct ActivateCallbacks {
     std::function<void()> show_format_sd_modal;
     std::function<void()> show_onboarding;
     std::function<void()> open_app_link;
+    std::function<void()> open_wifi_page;
+    std::function<void()> open_time_page;
 };
 
 ActivateResult HandlePrimaryActivate(const SettingsPageCoordinator& coordinator);

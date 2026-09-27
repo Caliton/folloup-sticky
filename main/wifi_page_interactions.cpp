@@ -28,8 +28,7 @@ ActivateResult HandlePrimaryActivate(WifiPageCoordinator& coordinator)
             coordinator,
             ActivateIntent::kShowHome,
             ActivateIntent::kShowSettings,
-            ActivateIntent::kForceRefresh,
-            ActivateIntent::kShowTime);
+            ActivateIntent::kShowToday);
     if (footer_result.handled) {
         return footer_result;
     }
@@ -91,9 +90,9 @@ void ApplyPrimaryActivateResult(const ActivateResult& result,
                 callbacks.show_settings();
             }
             return;
-        case ActivateIntent::kShowTime:
-            if (callbacks.show_time) {
-                callbacks.show_time();
+        case ActivateIntent::kShowToday:
+            if (callbacks.show_today) {
+                callbacks.show_today();
             }
             return;
         case ActivateIntent::kForceRefresh:

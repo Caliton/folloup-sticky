@@ -104,6 +104,15 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsSoundToggle)),
     };
 
+    state.wifi_page_button = {
+        .label_text = "Wi-Fi",
+        .selected = IsRoleFocused(page_navigation::NavigationItemRole::kSettingsWifiPageButton),
+    };
+    state.time_page_button = {
+        .label_text = "Data e hora",
+        .selected = IsRoleFocused(page_navigation::NavigationItemRole::kSettingsTimePageButton),
+    };
+
     state.storage_status.has_sd_card =
         storage_snapshot.inserted && storage_snapshot.mounted && has_storage_stats;
     if (state.storage_status.has_sd_card) {
@@ -113,13 +122,14 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
 
     // Label tracks the mode so the button reads correctly if the page is revisited while
     // OTG is active or mid-transition.
+    // Half-width buttons: keep the labels short.
     std::string_view otg_label = "Ativar OTG";
     if (storage_snapshot.mode == storage_service::Mode::kUsbMounted) {
-        otg_label = "Desativar OTG";
+        otg_label = "Sair do OTG";
     } else if (storage_snapshot.mode == storage_service::Mode::kEnteringUsbMode) {
-        otg_label = "Ativando OTG";
+        otg_label = "Ativando...";
     } else if (storage_snapshot.mode == storage_service::Mode::kExitingUsbMode) {
-        otg_label = "Desativando OTG";
+        otg_label = "Saindo...";
     }
     state.enable_otg_button = {
         .label_text = otg_label,
@@ -127,11 +137,11 @@ epaper_ui::SettingsPageState SettingsPageCoordinator::BuildState(
             IsRoleFocused(page_navigation::NavigationItemRole::kSettingsEnableOtgButton),
     };
 
-    std::string_view format_label = "Formatar cartão SD";
+    std::string_view format_label = "Formatar SD";
     if (storage_snapshot.mode == storage_service::Mode::kFormatting ||
         (storage_snapshot.operation == storage_service::Operation::kFormatSd &&
          storage_snapshot.phase == storage_service::OperationPhase::kStarted)) {
-        format_label = "Formatando cartão SD";
+        format_label = "Formatando...";
     }
     state.format_sd_button = {
         .label_text = format_label,

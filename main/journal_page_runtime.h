@@ -16,8 +16,7 @@ enum class ActivateIntent : uint8_t {
     kNone = 0,
     kShowHome,
     kShowSettings,
-    kShowWifi,
-    kShowTime,
+    kShowToday,
     kOpenItemActions,
 };
 

@@ -17,6 +17,8 @@ enum class SettingsPageItemId : uint8_t {
     kWifiToggle,
     kAccessPointToggle,
     kSoundToggle,
+    kWifiPageButton,
+    kTimePageButton,
     kEnableOtgButton,
     kFormatSdButton,
     kManualOnboardingButton,
@@ -29,6 +31,9 @@ struct SettingsPageState {
     MenuToggleState wifi_toggle = {};
     MenuToggleState access_point_toggle = {};
     MenuToggleState sound_toggle = {};
+    // Wi-Fi and Data e hora pages (no longer in the footer) share a row under Geral.
+    ButtonState wifi_page_button = {};
+    ButtonState time_page_button = {};
     SdStatusState storage_status = {};
     ButtonState enable_otg_button = {};
     ButtonState format_sd_button = {};

@@ -47,11 +47,8 @@ ActivateResult HandlePrimaryActivate(SummarizePageCoordinator& coordinator, bool
         case NavigationItemRole::kFooterSettings:
             result.intent = ActivateIntent::kShowSettings;
             break;
-        case NavigationItemRole::kFooterWifi:
-            result.intent = ActivateIntent::kShowWifi;
-            break;
-        case NavigationItemRole::kFooterTime:
-            result.intent = ActivateIntent::kShowTime;
+        case NavigationItemRole::kFooterToday:
+            result.intent = ActivateIntent::kShowToday;
             break;
         default:
             result.handled = false;
@@ -74,14 +71,9 @@ void ApplyPrimaryActivateResult(const ActivateResult& result, const ActivateCall
                 callbacks.show_settings();
             }
             break;
-        case ActivateIntent::kShowWifi:
-            if (callbacks.show_wifi) {
-                callbacks.show_wifi();
-            }
-            break;
-        case ActivateIntent::kShowTime:
-            if (callbacks.show_time) {
-                callbacks.show_time();
+        case ActivateIntent::kShowToday:
+            if (callbacks.show_today) {
+                callbacks.show_today();
             }
             break;
         case ActivateIntent::kToggleSegment:

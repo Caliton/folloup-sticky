@@ -16,9 +16,7 @@ enum class FooterFocusItem : uint8_t {
     kNone = 0,
     kHome,
     kSettings,
-    kWifi,
-    kTime,
-    kFolder,
+    kToday,
     kMic,
     kSticky,
 };
@@ -27,9 +25,7 @@ struct LayoutState {
     bool visible = true;
     bool show_home = false;
     bool show_settings = false;
-    bool show_wifi = false;
-    bool show_time = false;
-    bool show_folder = false;
+    bool show_today = false;
     bool show_mic = true;
     bool show_sticky = false;
 };

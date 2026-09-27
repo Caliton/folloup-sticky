@@ -24,6 +24,16 @@ footer_runtime::ProjectionState BuildFooterProjectionState();
 page_actions::FocusUpdateOutcome FocusFooterItem(footer_runtime::FooterFocusItem item);
 void ResetFocus();
 
+// The Wi-Fi / Data e hora buttons. Deferred so the screen changes after input dispatch;
+// app_shell polls ConsumePendingOpen().
+enum class OpenTarget : uint8_t {
+    kNone = 0,
+    kWifi,
+    kTime,
+};
+void RequestOpen(OpenTarget target);
+OpenTarget ConsumePendingOpen();
+
 }  // namespace settings_page_runtime
 
 #endif  // SETTINGS_PAGE_RUNTIME_H_

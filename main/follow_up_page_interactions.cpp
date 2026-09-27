@@ -31,10 +31,8 @@ ActivateResult HandlePrimaryActivate(FollowUpPageCoordinator& coordinator)
         result.intent = ActivateIntent::kShowHome;
     } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterSettings)) {
         result.intent = ActivateIntent::kShowSettings;
-    } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterWifi)) {
-        result.intent = ActivateIntent::kShowWifi;
-    } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterTime)) {
-        result.intent = ActivateIntent::kShowTime;
+    } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterToday)) {
+        result.intent = ActivateIntent::kShowToday;
     } else {
         result.handled = false;
         result.play_activate_cue = false;
@@ -55,14 +53,9 @@ void ApplyPrimaryActivateResult(const ActivateResult& result, const ActivateCall
                 callbacks.show_settings();
             }
             break;
-        case ActivateIntent::kShowWifi:
-            if (callbacks.show_wifi) {
-                callbacks.show_wifi();
-            }
-            break;
-        case ActivateIntent::kShowTime:
-            if (callbacks.show_time) {
-                callbacks.show_time();
+        case ActivateIntent::kShowToday:
+            if (callbacks.show_today) {
+                callbacks.show_today();
             }
             break;
         case ActivateIntent::kOpenItemActions:

@@ -22,6 +22,8 @@ struct Layout {
     UiRect wifi_toggle = {};
     UiRect access_point_toggle = {};
     UiRect sound_toggle = {};
+    UiRect wifi_page_button = {};
+    UiRect time_page_button = {};
     UiRect storage_status = {};
     UiRect enable_otg_button = {};
     UiRect format_sd_button = {};
@@ -53,7 +55,23 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
     const UiRect sound_toggle =
         MenuToggleBounds(page_x, access_point_toggle.bottom(), sound_style);
 
-    const int storage_heading_y = sound_toggle.bottom() + kSectionGap;
+    // Two half-width buttons per row keep the page within the screen.
+    const int half_width = std::max(0, (page_width - kButtonStackGap) / 2);
+    const int second_x = page_x + half_width + kButtonStackGap;
+    const int second_width = page_width - half_width - kButtonStackGap;
+    auto half_button = [&](int x, int y, const ButtonState& button, int width) {
+        ButtonStyle style = {};
+        style.width = width;
+        return ButtonBounds(x, y, button, style);
+    };
+
+    const UiRect wifi_page_button =
+        half_button(page_x, sound_toggle.bottom() + kButtonStackGap, state.wifi_page_button,
+                    half_width);
+    const UiRect time_page_button =
+        half_button(second_x, wifi_page_button.y, state.time_page_button, second_width);
+
+    const int storage_heading_y = wifi_page_button.bottom() + kSectionGap;
     SdStatusStyle storage_style = {};
     storage_style.max_width = page_width;
     const UiRect storage_status = SdStatusBounds(page_x,
@@ -62,35 +80,24 @@ Layout BuildLayout(int portrait_width, int portrait_height, const SettingsPageSt
                                                  state.storage_status,
                                                  storage_style);
 
-    ButtonStyle otg_button_style = {};
-    otg_button_style.width = page_width;
-    const int button_y = storage_status.bottom() + kStorageButtonTopGap;
     const UiRect enable_otg_button =
-        ButtonBounds(page_x, button_y, state.enable_otg_button, otg_button_style);
-
-    ButtonStyle format_button_style = {};
-    format_button_style.width = page_width;
+        half_button(page_x, storage_status.bottom() + kStorageButtonTopGap,
+                    state.enable_otg_button, half_width);
     const UiRect format_sd_button =
-        ButtonBounds(page_x, enable_otg_button.bottom() + kButtonStackGap,
-                     state.format_sd_button, format_button_style);
+        half_button(second_x, enable_otg_button.y, state.format_sd_button, second_width);
 
-    // Manual and the web-app link share the last row: the page has no room for another one.
-    const int half_width = std::max(0, (page_width - kButtonStackGap) / 2);
-    ButtonStyle manual_button_style = {};
-    manual_button_style.width = half_width;
     const UiRect manual_onboarding_button =
-        ButtonBounds(page_x, format_sd_button.bottom() + kButtonStackGap,
-                     state.manual_onboarding_button, manual_button_style);
-    ButtonStyle app_link_button_style = {};
-    app_link_button_style.width = page_width - half_width - kButtonStackGap;
-    const UiRect app_link_button =
-        ButtonBounds(page_x + half_width + kButtonStackGap, manual_onboarding_button.y,
-                     state.app_link_button, app_link_button_style);
+        half_button(page_x, enable_otg_button.bottom() + kButtonStackGap,
+                    state.manual_onboarding_button, half_width);
+    const UiRect app_link_button = half_button(second_x, manual_onboarding_button.y,
+                                               state.app_link_button, second_width);
 
     return {
         .wifi_toggle = wifi_toggle,
         .access_point_toggle = access_point_toggle,
         .sound_toggle = sound_toggle,
+        .wifi_page_button = wifi_page_button,
+        .time_page_button = time_page_button,
         .storage_status = storage_status,
         .enable_otg_button = enable_otg_button,
         .format_sd_button = format_sd_button,
@@ -114,6 +121,10 @@ UiRect SettingsPageItemBounds(int portrait_width,
             return layout.access_point_toggle;
         case SettingsPageItemId::kSoundToggle:
             return layout.sound_toggle;
+        case SettingsPageItemId::kWifiPageButton:
+            return layout.wifi_page_button;
+        case SettingsPageItemId::kTimePageButton:
+            return layout.time_page_button;
         case SettingsPageItemId::kEnableOtgButton:
             return layout.enable_otg_button;
         case SettingsPageItemId::kFormatSdButton:
@@ -151,6 +162,8 @@ bool HitTestSettingsPageItem(int portrait_width,
         SettingsPageItemId::kWifiToggle,
         SettingsPageItemId::kAccessPointToggle,
         SettingsPageItemId::kSoundToggle,
+        SettingsPageItemId::kWifiPageButton,
+        SettingsPageItemId::kTimePageButton,
         SettingsPageItemId::kEnableOtgButton,
         SettingsPageItemId::kFormatSdButton,
         SettingsPageItemId::kManualOnboardingButton,
@@ -256,6 +269,15 @@ void DrawSettingsPage(uint8_t* framebuffer,
                    layout.sound_toggle.y,
                    state.sound_toggle,
                    sound_style);
+
+    for (const auto& [bounds, button] :
+         {std::pair{layout.wifi_page_button, state.wifi_page_button},
+          std::pair{layout.time_page_button, state.time_page_button}}) {
+        ButtonStyle style = {};
+        style.width = bounds.width;
+        DrawButton(framebuffer, raw_width, raw_height, portrait_width, portrait_height, bounds.x,
+                   bounds.y, button, style);
+    }
 
     DrawTypographyText(framebuffer,
                        raw_width,

@@ -63,6 +63,14 @@ NavigationModel BuildSettingsPageNavigationModel()
             2);
     AddItem(model,
             NavigationItemSection::kSettingsPageMenu,
+            NavigationItemRole::kSettingsWifiPageButton,
+            7);
+    AddItem(model,
+            NavigationItemSection::kSettingsPageMenu,
+            NavigationItemRole::kSettingsTimePageButton,
+            8);
+    AddItem(model,
+            NavigationItemSection::kSettingsPageMenu,
             NavigationItemRole::kSettingsEnableOtgButton,
             3);
     AddItem(model,
@@ -77,11 +85,10 @@ NavigationModel BuildSettingsPageNavigationModel()
             NavigationItemSection::kSettingsPageMenu,
             NavigationItemRole::kSettingsAppLinkButton,
             6);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -110,11 +117,10 @@ NavigationModel BuildWifiPageNavigationModel()
             NavigationItemSection::kWifiPageControls,
             NavigationItemRole::kWifiPageConnectButton,
             4);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -133,11 +139,10 @@ NavigationModel BuildTimePageNavigationModel()
     AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageMonth, 4);
     AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageYear, 5);
     AddItem(model, NavigationItemSection::kTimePageControls, NavigationItemRole::kTimePageSave, 6);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -151,11 +156,10 @@ NavigationModel BuildDashboardPageNavigationModel()
         AddItem(model, NavigationItemSection::kDashboardPageMenu,
                 NavigationItemRole::kDashboardMenuItem, index);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -166,11 +170,10 @@ NavigationModel BuildVibeCheckPageNavigationModel()
 
     AddItem(model, NavigationItemSection::kVibeCheckPageControls,
             NavigationItemRole::kVibeCheckPageCard, 0);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -185,11 +188,10 @@ NavigationModel BuildSummarizePageNavigationModel()
             NavigationItemRole::kSummarizePageScrollContainer, 1);
     AddItem(model, NavigationItemSection::kSummarizePageControls,
             NavigationItemRole::kSummarizePageGetSummaryButton, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -207,11 +209,10 @@ NavigationModel BuildNotesPageNavigationModel(int timeline_group_count)
             NavigationItemRole::kNotesPageVibeCheckButton, 0);
     AddItem(model, NavigationItemSection::kNotesPageTimelineGroups,
             NavigationItemRole::kNotesPageSummarizeButton, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -225,11 +226,10 @@ NavigationModel BuildFollowUpPageNavigationModel(int timeline_group_count)
         AddItem(model, NavigationItemSection::kFollowUpPageTimelineGroups,
                 NavigationItemRole::kFollowUpPageTimelineGroup, index);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -242,11 +242,10 @@ NavigationModel BuildBooksPageNavigationModel(int book_count)
         AddItem(model, NavigationItemSection::kBooksPageList, NavigationItemRole::kBooksPageItem,
                 index);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -261,11 +260,10 @@ NavigationModel BuildJournalPageNavigationModel(int timeline_group_count)
         AddItem(model, NavigationItemSection::kJournalPageTimelineGroups,
                 NavigationItemRole::kJournalPageTimelineGroup, index);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 
@@ -298,11 +296,10 @@ NavigationModel BuildDetailsPageNavigationModel(bool with_transcribe)
         AddItem(model, NavigationItemSection::kDetailsPageControls,
                 NavigationItemRole::kDetailsPageTranscribeButton, 2);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterToday, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     return model;
 }
 

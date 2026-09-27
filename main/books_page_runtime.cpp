@@ -42,9 +42,7 @@ footer_runtime::FooterFocusItem FooterItemForSelectedIndex(int selected_index)
         case 1:
             return footer_runtime::FooterFocusItem::kSettings;
         case 2:
-            return footer_runtime::FooterFocusItem::kWifi;
-        case 3:
-            return footer_runtime::FooterFocusItem::kTime;
+            return footer_runtime::FooterFocusItem::kToday;
         case 4:
             return footer_runtime::FooterFocusItem::kSticky;
         default:
@@ -59,10 +57,8 @@ NavigationItemRole FooterRoleForItem(footer_runtime::FooterFocusItem item)
             return NavigationItemRole::kFooterHome;
         case footer_runtime::FooterFocusItem::kSettings:
             return NavigationItemRole::kFooterSettings;
-        case footer_runtime::FooterFocusItem::kWifi:
-            return NavigationItemRole::kFooterWifi;
-        case footer_runtime::FooterFocusItem::kTime:
-            return NavigationItemRole::kFooterTime;
+        case footer_runtime::FooterFocusItem::kToday:
+            return NavigationItemRole::kFooterToday;
         case footer_runtime::FooterFocusItem::kSticky:
             return NavigationItemRole::kFooterSticky;
         default:

@@ -52,9 +52,7 @@ footer_runtime::FooterFocusItem FooterItemForSelectedIndex(int selected_index)
         case 1:
             return footer_runtime::FooterFocusItem::kSettings;
         case 2:
-            return footer_runtime::FooterFocusItem::kWifi;
-        case 3:
-            return footer_runtime::FooterFocusItem::kTime;
+            return footer_runtime::FooterFocusItem::kToday;
         case 4:
             return footer_runtime::FooterFocusItem::kSticky;
         default:
@@ -290,11 +288,8 @@ ActivateResult ActivateFocusedItem()
         case NavigationItemRole::kFooterSettings:
             result.intent = ActivateIntent::kShowSettings;
             return result;
-        case NavigationItemRole::kFooterWifi:
-            result.intent = ActivateIntent::kShowWifi;
-            return result;
-        case NavigationItemRole::kFooterTime:
-            result.intent = ActivateIntent::kShowTime;
+        case NavigationItemRole::kFooterToday:
+            result.intent = ActivateIntent::kShowToday;
             return result;
         default:
             result.handled = false;

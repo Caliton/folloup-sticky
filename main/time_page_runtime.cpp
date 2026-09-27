@@ -78,9 +78,7 @@ footer_runtime::FooterFocusItem FooterItemForSelectedIndex(int selected_index)
         case 1:
             return footer_runtime::FooterFocusItem::kSettings;
         case 2:
-            return footer_runtime::FooterFocusItem::kWifi;
-        case 3:
-            return footer_runtime::FooterFocusItem::kTime;
+            return footer_runtime::FooterFocusItem::kToday;
         case 0:
             return footer_runtime::FooterFocusItem::kHome;
         case 4:
@@ -95,16 +93,13 @@ page_navigation::NavigationItemRole FooterRoleForFooterItem(footer_runtime::Foot
     switch (item) {
         case footer_runtime::FooterFocusItem::kSettings:
             return page_navigation::NavigationItemRole::kFooterSettings;
-        case footer_runtime::FooterFocusItem::kWifi:
-            return page_navigation::NavigationItemRole::kFooterWifi;
+        case footer_runtime::FooterFocusItem::kToday:
+            return page_navigation::NavigationItemRole::kFooterToday;
         case footer_runtime::FooterFocusItem::kHome:
             return page_navigation::NavigationItemRole::kFooterHome;
-        case footer_runtime::FooterFocusItem::kTime:
-            return page_navigation::NavigationItemRole::kFooterTime;
         case footer_runtime::FooterFocusItem::kSticky:
             return page_navigation::NavigationItemRole::kFooterSticky;
         case footer_runtime::FooterFocusItem::kNone:
-        case footer_runtime::FooterFocusItem::kFolder:
         case footer_runtime::FooterFocusItem::kMic:
         default:
             return page_navigation::NavigationItemRole::kUnknown;
