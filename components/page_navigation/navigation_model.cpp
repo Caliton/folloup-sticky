@@ -142,7 +142,7 @@ NavigationModel BuildDashboardPageNavigationModel()
     NavigationModel model = {};
     model.scope = NavigationScope::kDashboard;
 
-    constexpr int kDashboardMenuItems = 6;  // epaper_ui::kDashboardMenuItemCount
+    constexpr int kDashboardMenuItems = 7;  // epaper_ui::kDashboardMenuItemCount
     for (int index = 0; index < kDashboardMenuItems; ++index) {
         AddItem(model, NavigationItemSection::kDashboardPageMenu,
                 NavigationItemRole::kDashboardMenuItem, index);
@@ -251,6 +251,25 @@ NavigationModel BuildBooksPageNavigationModel(int book_count)
     for (int index = 0; index < std::max(0, book_count); ++index) {
         AddItem(model, NavigationItemSection::kBooksPageList, NavigationItemRole::kBooksPageItem,
                 index);
+    }
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
+    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
+    return model;
+}
+
+NavigationModel BuildJournalPageNavigationModel(int timeline_group_count)
+{
+    NavigationModel model = {};
+    model.scope = NavigationScope::kJournal;
+
+    AddItem(model, NavigationItemSection::kJournalPageControls,
+            NavigationItemRole::kJournalPageSegmentControl, 0);
+    for (int index = 0; index < std::max(0, timeline_group_count); ++index) {
+        AddItem(model, NavigationItemSection::kJournalPageTimelineGroups,
+                NavigationItemRole::kJournalPageTimelineGroup, index);
     }
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);

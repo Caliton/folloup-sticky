@@ -40,7 +40,7 @@ void TodosPageCoordinator::BuildGroups(const std::vector<RecordingEntry>& record
     std::vector<const RecordingEntry*> sorted;
     sorted.reserve(recordings.size());
     for (const RecordingEntry& entry : recordings) {
-        if (IsTodoTag(entry.metadata.tag)) {
+        if (IsTodoTag(entry.metadata.tag) && entry.metadata.journal_item_id.empty()) {
             sorted.push_back(&entry);
         }
     }

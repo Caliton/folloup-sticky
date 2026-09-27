@@ -22,6 +22,9 @@ footer_runtime::ProjectionState BuildFooterProjectionState();
 page_actions::FocusUpdateOutcome FocusFooterItem(footer_runtime::FooterFocusItem item);
 void ResetFocus();
 esp_err_t SyncFromService(bool request_refresh_if_active);
+// Journal numbers for the progress bar and the Diário badge (see DashboardPageCoordinator).
+esp_err_t SetJournalSummary(int today_tasks, int today_tasks_done, int pending,
+                            bool request_refresh_if_active);
 // Repaints the dashboard when the welcome-message rotation interval has rolled over since the
 // last sync. Cheap no-op within the same interval; call it from the periodic clock tick.
 esp_err_t RefreshWelcomeIfRotated();

@@ -13,10 +13,10 @@ namespace epaper_ui {
 
 inline constexpr int kSegmentControlNoSelection = -1;
 inline constexpr int kSegmentControlMinSegmentCount = 2;
-inline constexpr int kSegmentControlMaxSegmentCount = 3;
+inline constexpr int kSegmentControlMaxSegmentCount = 4;
 inline constexpr int kSegmentControlDefaultSegmentCount = 2;
 
-// A pill of 2-3 mutually exclusive segments (e.g. Notes / Todos). `active` means the control is
+// A pill of 2-4 mutually exclusive segments (e.g. Notes / Todos). `active` means the control is
 // "entered" and UP/DOWN cycles segments; `focused` just draws the focus ring.
 struct SegmentControlState {
     std::array<std::string, kSegmentControlMaxSegmentCount> labels = {"", "", ""};

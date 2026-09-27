@@ -30,6 +30,9 @@ struct RecordingMetadata {
     bool completed = false;
     bool follow_up = false;
     bool follow_up_completed = false;
+    // Set when the take was filed into the bullet journal (journal_service). Such recordings
+    // belong to the journal item, so the Notes/Tasks collections and their counts skip them.
+    std::string journal_item_id = {};
 };
 
 // A single archived recording, resolved from its sidecar files on the SD card.
@@ -113,6 +116,10 @@ bool MarkRecordingFollowUp(const std::string& recording_id, bool follow_up,
                            bool follow_up_completed);
 // Change a recording's tag (e.g. turn a Note into a Task) and re-aggregate the archive counts.
 bool UpdateRecordingTag(const std::string& recording_id, RecordingTag tag);
+// The WAV path of an archived recording ("" when it is gone). SD I/O on the caller.
+std::string ResolveRecordingPath(const std::string& recording_id);
+// Link (or unlink with "") a recording to the journal item that owns it.
+bool SetRecordingJournalItem(const std::string& recording_id, const std::string& journal_item_id);
 
 SaveResult SaveClip(const recording_service::RecordedClip& clip,
                     const SaveOptions& options = {});

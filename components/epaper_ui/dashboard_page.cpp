@@ -16,7 +16,7 @@ constexpr int kMiddleMenuGap = design::spacing::k8;
 constexpr auto kProgressLabelRole = design::TypographyRole::kLabelSmallBlack;
 
 constexpr std::array<const char*, kDashboardMenuItemCount> kMenuLabels = {
-    "Acompanhar", "Resumir", "Checar vibe", "Notas", "Tarefas", "Livros",
+    "Diário", "Acompanhar", "Resumir", "Checar vibe", "Notas", "Tarefas", "Livros",
 };
 
 int PageWidth(int portrait_width)
@@ -53,7 +53,7 @@ MenuContainerState MenuState(const DashboardPageState& state)
 
 // Rows shrink (down to kMinMenuItemHeight) when a two-line greeting plus the completion banner
 // would otherwise push the last menu item under the footer.
-constexpr int kMinMenuItemHeight = design::spacing::k56;
+constexpr int kMinMenuItemHeight = design::spacing::k48;
 constexpr int kMenuFooterGap = design::spacing::k8;
 
 MenuContainerStyle MenuStyle(int width, int item_height)
@@ -103,12 +103,14 @@ Layout BuildLayout(int portrait_width, int portrait_height, const DashboardPageS
 
 bool MenuItemShowsBadge(const DashboardPageMenuState& menu, int index)
 {
-    switch (index) {
-        case 0:
+    switch (static_cast<DashboardMenuItem>(index)) {
+        case DashboardMenuItem::kJournal:
+            return menu.shows_journal_badge;
+        case DashboardMenuItem::kFollowUp:
             return menu.shows_follow_up_badge;
-        case 3:
+        case DashboardMenuItem::kNotes:
             return menu.shows_notes_badge;
-        case 4:
+        case DashboardMenuItem::kTodos:
             return menu.shows_todos_badge;
         default:
             return false;
@@ -117,12 +119,14 @@ bool MenuItemShowsBadge(const DashboardPageMenuState& menu, int index)
 
 BadgeState MenuItemBadge(const DashboardPageMenuState& menu, int index)
 {
-    switch (index) {
-        case 0:
+    switch (static_cast<DashboardMenuItem>(index)) {
+        case DashboardMenuItem::kJournal:
+            return {menu.journal_badge_text, false};
+        case DashboardMenuItem::kFollowUp:
             return {menu.follow_up_badge_text, false};
-        case 3:
+        case DashboardMenuItem::kNotes:
             return {menu.notes_badge_text, false};
-        case 4:
+        case DashboardMenuItem::kTodos:
             return {menu.todos_badge_text, false};
         default:
             return {};

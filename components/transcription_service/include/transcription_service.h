@@ -18,8 +18,10 @@ struct Snapshot {
     std::string last_error_code = {};
     std::string last_error_message = {};
     std::string last_transcript = {};
-    // "note"/"task"/"idea" when the request classified the take (see BeginTranscription).
+    // "note"/"task"/"idea"/"event" when the request classified the take (see BeginTranscription).
     std::string last_tag = {};
+    // Spoken "when" of a classified take (see gemini_service::TranscriptionResult::when).
+    std::string last_when = {};
 };
 
 struct Event {

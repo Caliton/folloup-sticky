@@ -20,6 +20,7 @@ enum class NavigationScope : uint8_t {
     kDetails,
     kOnboarding,
     kBooks,
+    kJournal,
 };
 
 enum class NavigationItemSection : uint8_t {
@@ -37,6 +38,8 @@ enum class NavigationItemSection : uint8_t {
     kDetailsPageControls,
     kOnboardingPageControls,
     kBooksPageList,
+    kJournalPageControls,
+    kJournalPageTimelineGroups,
 };
 
 enum class NavigationItemRole : uint8_t {
@@ -80,6 +83,8 @@ enum class NavigationItemRole : uint8_t {
     kOnboardingPagePrev,
     kOnboardingPageNext,
     kBooksPageItem,
+    kJournalPageSegmentControl,
+    kJournalPageTimelineGroup,
 };
 
 struct NavigationItemDescriptor {
@@ -113,6 +118,8 @@ NavigationModel BuildDetailsPageNavigationModel(bool with_transcribe = false);
 NavigationModel BuildOnboardingPageNavigationModel();
 // One item per book (item_index = library index) followed by the footer.
 NavigationModel BuildBooksPageNavigationModel(int book_count);
+// The level switcher (Ano / Mês / Semana / Dia), one item per timeline group, then the footer.
+NavigationModel BuildJournalPageNavigationModel(int timeline_group_count);
 
 }  // namespace page_navigation
 

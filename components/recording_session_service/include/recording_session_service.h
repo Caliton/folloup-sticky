@@ -43,6 +43,10 @@ enum class BlockedReason : uint8_t {
 struct Context {
     bool lock_screen_active = false;
     bool overlay_visible = false;
+    // Period key of the journal view on screen when the take starts ("" elsewhere). A take
+    // recorded there is filed into the bullet journal under that period, unless the speech
+    // names another one ("pra amanhã", "em novembro").
+    std::string journal_period = {};
 };
 
 struct Snapshot {
@@ -66,6 +70,10 @@ struct Snapshot {
     // Set when Gemini chose the tag (tag menu skipped); auto_tag is where the take ended up.
     bool auto_tagged = false;
     recording_archive_service::RecordingTag auto_tag = recording_archive_service::RecordingTag::kNote;
+    // Set when the take became a journal item: its type ("task"/"note"/"event") and period key.
+    bool journal_filed = false;
+    std::string journal_type = {};
+    std::string journal_period = {};
     std::string last_status_message = {};
     std::string last_error_code = {};
     std::string last_error_message = {};

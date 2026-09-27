@@ -8,6 +8,7 @@
 #include "details_page_runtime.h"
 #include "follow_up_page_interactions.h"
 #include "follow_up_page_runtime.h"
+#include "journal_page_runtime.h"
 #include "notes_page_interactions.h"
 #include "notes_page_runtime.h"
 #include "books_page_runtime.h"
@@ -1231,6 +1232,138 @@ ButtonResult HandleTodosButtonEvent(const button_service::ButtonEventInfo& event
     }
 }
 
+// --- Journal page ----------------------------------------------------------
+
+esp_err_t ApplyJournalPageAndFooterDisplayState()
+{
+    const esp_err_t page_err = journal_page_runtime::UpdateDisplayState();
+    if (page_err != ESP_OK && page_err != ESP_ERR_INVALID_STATE) {
+        return page_err;
+    }
+    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
+    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
+        return footer_err;
+    }
+    return page_err != ESP_OK ? page_err : footer_err;
+}
+
+void ApplyJournalFocusUpdate(const page_actions::FocusUpdateOutcome& outcome)
+{
+    if (!outcome.handled) {
+        return;
+    }
+    if (outcome.sync_footer_projection) {
+        footer_runtime::SetProjectionState(journal_page_runtime::BuildFooterProjectionState());
+    }
+    if (outcome.apply_page_state) {
+        const display_service::RefreshRequest refresh_request = {
+            .refresh_mode = display_service::RefreshMode::kPartial,
+            .scope = display_service::RefreshScope::kRegion,
+        };
+        if (outcome.sync_footer_projection) {
+            (void)ui_refresh_runtime::Schedule(ui_refresh_runtime::SurfaceKey::kJournalPage,
+                                               &ApplyJournalPageAndFooterDisplayState,
+                                               refresh_request);
+            return;
+        }
+        (void)journal_page_runtime::UpdateDisplayStateAndRequestRefresh(refresh_request);
+    }
+}
+
+ButtonResult ApplyJournalActivateResult(const journal_page_runtime::ActivateResult& activation)
+{
+    ButtonResult result = {};
+    if (!activation.handled) {
+        return result;
+    }
+    result.handled = true;
+    result.interaction_result = MakeConsumedResult(activation.play_activate_cue);
+
+    if (activation.apply_page_state) {
+        (void)journal_page_runtime::UpdateDisplayStateAndRequestRefresh({
+            .refresh_mode = display_service::RefreshMode::kPartial,
+            .scope = display_service::RefreshScope::kRegion,
+        });
+    }
+
+    switch (activation.intent) {
+        case journal_page_runtime::ActivateIntent::kShowHome:
+            result.footer_item = footer_runtime::FooterFocusItem::kHome;
+            break;
+        case journal_page_runtime::ActivateIntent::kShowSettings:
+            result.footer_item = footer_runtime::FooterFocusItem::kSettings;
+            break;
+        case journal_page_runtime::ActivateIntent::kShowWifi:
+            result.footer_item = footer_runtime::FooterFocusItem::kWifi;
+            break;
+        case journal_page_runtime::ActivateIntent::kShowTime:
+            result.footer_item = footer_runtime::FooterFocusItem::kTime;
+            break;
+        case journal_page_runtime::ActivateIntent::kOpenItemActions:
+            (void)journal_page_runtime::ShowItemActionsModal();
+            break;
+        case journal_page_runtime::ActivateIntent::kNone:
+        default:
+            break;
+    }
+    if (result.footer_item != footer_runtime::FooterFocusItem::kNone) {
+        result.interaction_result.play_feedback = false;
+        result.interaction_result.feedback_cue = app_interaction::FeedbackCue::kNone;
+    }
+    return result;
+}
+
+FocusMoveResult ApplyJournalMoveResult(const page_actions::FocusMoveOutcome& outcome)
+{
+    FocusMoveResult result = {};
+    if (!outcome.handled) {
+        return result;
+    }
+    result.handled = true;
+    result.interaction_result = MakeConsumedResult(outcome.play_navigation_cue);
+    ApplyJournalFocusUpdate({
+        .handled = outcome.handled,
+        .apply_page_state = outcome.apply_page_state,
+        .sync_footer_projection = outcome.sync_footer_projection,
+    });
+    return result;
+}
+
+ButtonResult HandleJournalButtonEvent(const button_service::ButtonEventInfo& event)
+{
+    ButtonResult result = {};
+
+    // App-wide gesture: holding DOWN exits an entered control (item list / level switcher).
+    if (event.button == button_service::ButtonId::kDown &&
+        event.event == button_service::ButtonEvent::kLongPressStart) {
+        if (journal_page_runtime::ExitActiveControl()) {
+            result.handled = true;
+            result.interaction_result = MakeConsumedResult(true);
+        }
+        return result;
+    }
+
+    if (!button_service::IsPrimaryButton(event.button)) {
+        return result;
+    }
+
+    switch (event.event) {
+        case button_service::ButtonEvent::kSingleClick:
+            return ApplyJournalActivateResult(journal_page_runtime::ActivateFocusedItem());
+        case button_service::ButtonEvent::kPressDown:
+        case button_service::ButtonEvent::kPressUp:
+        case button_service::ButtonEvent::kPressRepeat:
+        case button_service::ButtonEvent::kLongPressStart:
+        case button_service::ButtonEvent::kLongPressUp:
+            result.handled = true;
+            result.interaction_result.consumed = true;
+            return result;
+        case button_service::ButtonEvent::kDoubleClick:
+        default:
+            return result;
+    }
+}
+
 // --- Follow-up page --------------------------------------------------------
 
 esp_err_t ApplyFollowUpPageAndFooterDisplayState()
@@ -1700,6 +1833,8 @@ footer_runtime::ProjectionState BuildFooterProjectionForScreen(display_service::
             return books_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kTodos:
             return todos_page_runtime::BuildFooterProjectionState();
+        case display_service::ScreenId::kJournal:
+            return journal_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kFollowUp:
             return follow_up_page_runtime::BuildFooterProjectionState();
         case display_service::ScreenId::kDetails:
@@ -1740,6 +1875,9 @@ void ResetFocusForScreen(display_service::ScreenId screen)
         case display_service::ScreenId::kTodos:
             todos_page_runtime::ResetFocus();
             return;
+        case display_service::ScreenId::kJournal:
+            journal_page_runtime::ResetFocus();
+            return;
         case display_service::ScreenId::kFollowUp:
             follow_up_page_runtime::ResetFocus();
             return;
@@ -1778,6 +1916,8 @@ FocusMoveResult MoveFocusForCurrentScreen(int delta, bool page_jump)
             return ApplyReaderMoveResult();
         case display_service::ScreenId::kTodos:
             return ApplyTodosMoveResult(todos_page_runtime::MoveFocus(delta));
+        case display_service::ScreenId::kJournal:
+            return ApplyJournalMoveResult(journal_page_runtime::MoveFocus(delta));
         case display_service::ScreenId::kFollowUp:
             return ApplyFollowUpMoveResult(follow_up_page_runtime::MoveFocus(delta));
         case display_service::ScreenId::kDetails:
@@ -1814,6 +1954,8 @@ ButtonResult HandleButtonEventForScreen(display_service::ScreenId screen,
             return HandleReaderButtonEvent(event);
         case display_service::ScreenId::kTodos:
             return HandleTodosButtonEvent(event);
+        case display_service::ScreenId::kJournal:
+            return HandleJournalButtonEvent(event);
         case display_service::ScreenId::kFollowUp:
             return HandleFollowUpButtonEvent(event);
         case display_service::ScreenId::kDetails:

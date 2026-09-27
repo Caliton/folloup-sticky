@@ -332,6 +332,9 @@ std::string SerializeMetadata(const ArchiveMetadata& metadata)
     cJSON_AddBoolToObject(root, "completed", metadata.completed);
     cJSON_AddBoolToObject(root, "follow_up", metadata.follow_up);
     cJSON_AddBoolToObject(root, "follow_up_completed", metadata.follow_up_completed);
+    if (!metadata.journal_item_id.empty()) {
+        cJSON_AddStringToObject(root, "journal_item_id", metadata.journal_item_id.c_str());
+    }
 
     char* raw = cJSON_PrintUnformatted(root);
     std::string json = raw != nullptr ? raw : "";
@@ -400,6 +403,10 @@ bool ParseMetadata(const std::string& json, ArchiveMetadata* metadata)
     parsed.follow_up = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root, "follow_up"));
     parsed.follow_up_completed =
         cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root, "follow_up_completed"));
+    cJSON* journal_item_id = cJSON_GetObjectItemCaseSensitive(root, "journal_item_id");
+    if (cJSON_IsString(journal_item_id) && journal_item_id->valuestring != nullptr) {
+        parsed.journal_item_id = journal_item_id->valuestring;
+    }
 
     cJSON_Delete(root);
     *metadata = parsed;
@@ -691,6 +698,9 @@ esp_err_t ScanDirectoryInto(const std::string& directory, Snapshot* snapshot)
         }
 
         snapshot->recording_count++;
+        if (!metadata.journal_item_id.empty()) {
+            continue;  // owned by a journal item, not the Notes/Tasks collections
+        }
         if (metadata.follow_up) {
             snapshot->follow_up_recording_count++;
         }
@@ -742,6 +752,8 @@ struct MutateContext {
     bool follow_up_completed = false;
     bool set_tag = false;
     RecordingTag tag = RecordingTag::kNote;
+    bool set_journal_item = false;
+    const char* journal_item_id = nullptr;
     bool applied = false;
 };
 
@@ -773,6 +785,9 @@ esp_err_t MutateMetadataOnMountedFilesystem(const char* mount_point, void* conte
     }
     if (mutate->set_tag) {
         metadata.tag = mutate->tag;
+    }
+    if (mutate->set_journal_item) {
+        metadata.journal_item_id = mutate->journal_item_id != nullptr ? mutate->journal_item_id : "";
     }
 
     const std::string updated = SerializeMetadata(metadata);
@@ -1358,6 +1373,52 @@ bool UpdateRecordingTag(const std::string& recording_id, RecordingTag tag)
     (void)storage_service::RunWithMountedFilesystem(MutateMetadataOnMountedFilesystem, &context);
     if (context.applied) {
         // Re-aggregate so the tag move (e.g. Note -> Task) is reflected in the dashboard counts.
+        (void)Refresh();
+    }
+    return context.applied;
+}
+
+struct ResolvePathContext {
+    const std::string* recording_id = nullptr;
+    std::string* path = nullptr;
+};
+
+esp_err_t ResolvePathOnMountedFilesystem(const char* mount_point, void* raw_context)
+{
+    auto* context = static_cast<ResolvePathContext*>(raw_context);
+    std::string base_path;
+    if (!ResolveExistingBasePath(mount_point, *context->recording_id, &base_path)) {
+        return ESP_ERR_NOT_FOUND;
+    }
+    *context->path = base_path + ".wav";
+    return ESP_OK;
+}
+
+std::string ResolveRecordingPath(const std::string& recording_id)
+{
+    std::string path;
+    if (recording_id.empty()) {
+        return path;
+    }
+    ResolvePathContext context = {.recording_id = &recording_id, .path = &path};
+    if (storage_service::RunWithMountedFilesystem(ResolvePathOnMountedFilesystem, &context) !=
+        ESP_OK) {
+        path.clear();
+    }
+    return path;
+}
+
+bool SetRecordingJournalItem(const std::string& recording_id, const std::string& journal_item_id)
+{
+    if (recording_id.empty()) {
+        return false;
+    }
+    MutateContext context = {};
+    context.recording_id = recording_id.c_str();
+    context.set_journal_item = true;
+    context.journal_item_id = journal_item_id.c_str();
+    (void)storage_service::RunWithMountedFilesystem(MutateMetadataOnMountedFilesystem, &context);
+    if (context.applied) {
         (void)Refresh();
     }
     return context.applied;

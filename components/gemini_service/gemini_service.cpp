@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -63,24 +64,35 @@ constexpr const char* kTranscriptPrompt =
     "Responda apenas com o texto da transcrição, sem comentários nem formatação.";
 // Same call, but the model also decides what kind of recording this is, so "adiciona uma
 // tarefa ..." lands straight in Tarefas without the tag menu. Answered as JSON (see
-// BuildTranscriptRequestJson's responseSchema): {"transcript", "tag", "text"}. The fields are
-// generated in that order on purpose: the model writes the literal speech first, classifies
-// with it in view, and only then strips the spoken command -- tagging first (or after the
-// command is gone) made the lite models miss obvious cues like "tive uma ideia".
+// BuildTranscriptRequestJson's responseSchema): {"transcript", "tag", "text", "when"}. The
+// fields are generated in that order on purpose: the model writes the literal speech first,
+// classifies with it in view, and only then strips the spoken command -- tagging first (or
+// after the command is gone) made the lite models miss obvious cues like "tive uma ideia".
+// "when" feeds the bullet journal: a relative token or a date the device turns into a period
+// key (see recording_session_service). Today's date is appended at request time.
 constexpr const char* kClassifyTranscriptPrompt =
-    "Responda em JSON com três campos, nesta ordem.\n"
+    "Responda em JSON com quatro campos, nesta ordem.\n"
     "1. \"transcript\": a transcrição literal da fala deste áudio, no idioma em que foi "
     "falada, sem traduzir.\n"
     "2. \"tag\": o tipo da gravação, decidido pela transcrição:\n"
     "- \"idea\" se a pessoa fala em ideia (ex.: \"tive uma ideia...\", \"anota uma ideia...\", "
     "\"nova ideia...\", \"uma ideia: ...\");\n"
+    "- \"event\" se for um compromisso ou acontecimento marcado (ex.: \"reunião...\", "
+    "\"consulta...\", \"aniversário...\", \"viagem...\", \"adiciona um evento...\");\n"
     "- \"task\" se a pessoa pede para adicionar ou criar uma tarefa ou lembrete (ex.: "
     "\"adiciona uma tarefa...\", \"nova tarefa...\", \"me lembra de...\"), ou se a fala é "
     "claramente algo que ela precisa fazer;\n"
     "- \"note\" em qualquer outro caso.\n"
     "3. \"text\": a mesma transcrição, sem o comando do início (ex.: \"tive uma ideia de\", "
-    "\"adiciona uma tarefa\") quando houver, começando com letra maiúscula. Não resuma nem "
-    "reescreva o restante.";
+    "\"adiciona uma tarefa\") e sem a indicação de quando (ex.: \"pra amanhã\", \"em "
+    "novembro\") quando houver, começando com letra maiúscula. Não resuma nem reescreva o "
+    "restante.\n"
+    "4. \"when\": quando a pessoa disse que isso deve acontecer ou ser feito. Use "
+    "\"today\" (hoje), \"tomorrow\" (amanhã), \"this_week\" (esta semana), \"next_week\" "
+    "(semana que vem), \"this_month\" (este mês), \"next_month\" (mês que vem), uma data "
+    "\"AAAA-MM-DD\" para um dia específico (ex.: \"sexta\", \"dia 15\", \"15 de novembro\"), "
+    "\"AAAA-MM\" para um mês (ex.: \"em novembro\") ou \"AAAA\" para um ano. Use \"\" "
+    "(vazio) se a pessoa não disse quando; não invente.\n";
 constexpr int kTranscribeTimeoutMs = 30000;
 constexpr size_t kHttpUploadChunkSamples = 2048;
 
@@ -1136,7 +1148,7 @@ HttpResponse PerformUploadFinalizePcmWav(const std::string& upload_url,
     return response;
 }
 
-// Unpacks the {"tag","text"} JSON of a classified transcription in place. If the model ignored
+// Unpacks the {"transcript","tag","text","when"} JSON of a classified transcription in place. If the model ignored
 // the schema, the raw reply stays as the transcript and the tag stays empty (no retag).
 void ParseClassifiedTranscript(TranscriptionResult* result)
 {
@@ -1148,9 +1160,10 @@ void ParseClassifiedTranscript(TranscriptionResult* result)
     const std::string literal = JsonStringField(reply, "transcript");
     const std::string tag = JsonStringField(reply, "tag");
     std::string text = JsonStringField(reply, "text");
+    const std::string when = JsonStringField(reply, "when");
     cJSON_Delete(reply);
-    ESP_LOGI(kTag, "Classified transcript: tag=%s literal=\"%.80s\" text=\"%.80s\"",
-             tag.c_str(), literal.c_str(), text.c_str());
+    ESP_LOGI(kTag, "Classified transcript: tag=%s when=%s literal=\"%.80s\" text=\"%.80s\"",
+             tag.c_str(), when.c_str(), literal.c_str(), text.c_str());
     if (text.empty()) {
         text = literal;
     }
@@ -1158,9 +1171,29 @@ void ParseClassifiedTranscript(TranscriptionResult* result)
         return;
     }
     result->transcript = text;
-    if (tag == "note" || tag == "task" || tag == "idea") {
+    if (tag == "note" || tag == "task" || tag == "idea" || tag == "event") {
         result->tag = tag;
     }
+    result->when = when;
+}
+
+// "Hoje é sábado, 26/09/2026." so the model can resolve "sexta" or "dia 15" into a date.
+std::string TodayPromptLine()
+{
+    static constexpr const char* kWeekdays[7] = {"domingo", "segunda-feira", "terça-feira",
+                                                 "quarta-feira", "quinta-feira", "sexta-feira",
+                                                 "sábado"};
+    const time_t now = time(nullptr);
+    struct tm local = {};
+    localtime_r(&now, &local);
+    if (local.tm_year + 1900 < 2024) {
+        return {};
+    }
+    char buffer[64] = {};
+    std::snprintf(buffer, sizeof(buffer), "Hoje é %s, %02d/%02d/%04d.",
+                  kWeekdays[local.tm_wday % 7], local.tm_mday, local.tm_mon + 1,
+                  local.tm_year + 1900);
+    return buffer;
 }
 
 std::string BuildTranscriptRequestJson(const std::string& file_uri, bool classify)
@@ -1172,8 +1205,9 @@ std::string BuildTranscriptRequestJson(const std::string& file_uri, bool classif
     cJSON* parts = cJSON_AddArrayToObject(content, "parts");
 
     cJSON* prompt_part = cJSON_CreateObject();
-    cJSON_AddStringToObject(prompt_part, "text",
-                            classify ? kClassifyTranscriptPrompt : kTranscriptPrompt);
+    const std::string prompt =
+        classify ? std::string(kClassifyTranscriptPrompt) + TodayPromptLine() : kTranscriptPrompt;
+    cJSON_AddStringToObject(prompt_part, "text", prompt.c_str());
     cJSON_AddItemToArray(parts, prompt_part);
 
     cJSON* audio_part = cJSON_CreateObject();
@@ -1193,13 +1227,15 @@ std::string BuildTranscriptRequestJson(const std::string& file_uri, bool classif
         cJSON_AddStringToObject(transcript, "type", "STRING");
         cJSON* tag = cJSON_AddObjectToObject(properties, "tag");
         cJSON_AddStringToObject(tag, "type", "STRING");
-        const char* tag_values[] = {"note", "task", "idea"};
-        cJSON_AddItemToObject(tag, "enum", cJSON_CreateStringArray(tag_values, 3));
+        const char* tag_values[] = {"note", "task", "idea", "event"};
+        cJSON_AddItemToObject(tag, "enum", cJSON_CreateStringArray(tag_values, 4));
         cJSON* text = cJSON_AddObjectToObject(properties, "text");
         cJSON_AddStringToObject(text, "type", "STRING");
-        const char* fields[] = {"transcript", "tag", "text"};
-        cJSON_AddItemToObject(schema, "required", cJSON_CreateStringArray(fields, 3));
-        cJSON_AddItemToObject(schema, "propertyOrdering", cJSON_CreateStringArray(fields, 3));
+        cJSON* when = cJSON_AddObjectToObject(properties, "when");
+        cJSON_AddStringToObject(when, "type", "STRING");
+        const char* fields[] = {"transcript", "tag", "text", "when"};
+        cJSON_AddItemToObject(schema, "required", cJSON_CreateStringArray(fields, 4));
+        cJSON_AddItemToObject(schema, "propertyOrdering", cJSON_CreateStringArray(fields, 4));
     }
 
     char* raw = cJSON_PrintUnformatted(root);

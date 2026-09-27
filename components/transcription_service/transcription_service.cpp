@@ -33,6 +33,7 @@ std::string s_last_error_code = {};
 std::string s_last_error_message = {};
 std::string s_last_transcript = {};
 std::string s_last_tag = {};
+std::string s_last_when = {};
 
 Snapshot BuildSnapshotLocked()
 {
@@ -46,6 +47,7 @@ Snapshot BuildSnapshotLocked()
     snapshot.last_error_message = s_last_error_message;
     snapshot.last_transcript = s_last_transcript;
     snapshot.last_tag = s_last_tag;
+    snapshot.last_when = s_last_when;
     return snapshot;
 }
 
@@ -95,6 +97,7 @@ void WorkerTask(void* raw_context)
             s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
             s_last_tag.clear();
+            s_last_when.clear();
             notify.ArmLocked();
         }
         // vTaskDelete(nullptr) never returns: every RAII owner (mutex, context) must already
@@ -117,6 +120,7 @@ void WorkerTask(void* raw_context)
             s_last_error_message.clear();
             s_last_transcript = result.transcript;
             s_last_tag = result.tag;
+            s_last_when = result.when;
             ESP_LOGI(kTag,
                      "Gemini transcription succeeded: chars=%u tag=%s wav_bytes=%u clip_ms=%u "
                      "upload_chunks=%u upload_elapsed_ms=%llu total_elapsed_ms=%llu",
@@ -133,6 +137,7 @@ void WorkerTask(void* raw_context)
             s_last_error_message = result.error_message;
             s_last_transcript.clear();
             s_last_tag.clear();
+            s_last_when.clear();
             ESP_LOGW(kTag, "Gemini transcription failed: http=%d code=%s message=%s",
                      result.http_status, s_last_error_code.c_str(), s_last_error_message.c_str());
         }
@@ -162,6 +167,7 @@ esp_err_t Init()
     s_last_error_message.clear();
     s_last_transcript.clear();
     s_last_tag.clear();
+    s_last_when.clear();
     return ESP_OK;
 }
 
@@ -207,6 +213,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip, bool classify)
                                        : "Nenhuma chave de API do Gemini configurada";
             s_last_transcript.clear();
             s_last_tag.clear();
+            s_last_when.clear();
             notify.ArmLocked();
             return false;
         }
@@ -217,6 +224,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip, bool classify)
             s_last_error_message = "Nenhum áudio gravado disponível";
             s_last_transcript.clear();
             s_last_tag.clear();
+            s_last_when.clear();
             notify.ArmLocked();
             return false;
         }
@@ -228,6 +236,7 @@ bool BeginTranscription(recording_service::RecordedClipPtr clip, bool classify)
         s_last_error_message.clear();
         s_last_transcript.clear();
         s_last_tag.clear();
+        s_last_when.clear();
         notify.ArmLocked();
     }
 

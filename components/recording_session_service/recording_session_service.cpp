@@ -13,6 +13,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "gemini_service.h"
+#include "journal_period.h"
+#include "journal_service.h"
 #include "playback_service.h"
 #include "storage_service.h"
 #include "system_sound_service.h"
@@ -58,6 +60,8 @@ void* s_event_context = nullptr;
 bool s_initialized = false;
 Snapshot s_snapshot = {};
 std::string s_pending_recording_id = {};
+// Journal period of the screen the current take was started on (see Context::journal_period).
+std::string s_journal_context = {};
 
 // Cue tokens make a late callback harmless: every cue we queue bumps the token, so a
 // result that arrives after the session has moved on (cancel, failure, a new recording)
@@ -213,6 +217,9 @@ void ResetToIdleLocked()
     s_snapshot.last_transcript.clear();
     s_snapshot.auto_tagged = false;
     s_snapshot.auto_tag = recording_archive_service::RecordingTag::kNote;
+    s_snapshot.journal_filed = false;
+    s_snapshot.journal_type.clear();
+    s_snapshot.journal_period.clear();
     s_snapshot.last_error_code.clear();
     s_snapshot.last_error_message.clear();
     s_snapshot.last_status_message = kIdleStatus;
@@ -538,6 +545,74 @@ bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classif
     return save_result.clip_saved;
 }
 
+
+// Where a classified take goes in the bullet journal. Ideas always stay in the collection.
+// Anything else is filed when it was recorded on the journal screen, when it is an event
+// (events only exist in the journal), or when the speech said when it should happen.
+struct JournalFiling {
+    bool file = false;
+    journal_service::ItemType type = journal_service::ItemType::kTask;
+    std::string period = {};
+};
+
+std::string ResolveSpokenWhen(const std::string& when, const journal_period::Date& today)
+{
+    using journal_period::AddDays;
+    if (when.empty()) {
+        return {};
+    }
+    if (when == "today") {
+        return journal_period::DayKey(today);
+    }
+    if (when == "tomorrow") {
+        return journal_period::DayKey(AddDays(today, 1));
+    }
+    if (when == "this_week") {
+        return journal_period::WeekKey(today);
+    }
+    if (when == "next_week") {
+        return journal_period::WeekKey(AddDays(today, 7));
+    }
+    if (when == "this_month") {
+        return journal_period::MonthKey(today);
+    }
+    if (when == "next_month") {
+        return journal_period::NextOf(journal_period::MonthKey(today));
+    }
+    // A date the model worked out itself; drop it if it is already in the past (a misheard
+    // weekday would otherwise file the item straight into the review queue).
+    if (journal_period::IsValidKey(when) && !journal_period::HasEnded(when, today)) {
+        return when;
+    }
+    return {};
+}
+
+JournalFiling DecideJournalFiling(const std::string& tag, const std::string& when,
+                                  const std::string& screen_period)
+{
+    JournalFiling filing = {};
+    journal_period::Date today = {};
+    if (tag.empty() || tag == "idea" || !journal_period::Today(&today)) {
+        return filing;
+    }
+    const std::string spoken = ResolveSpokenWhen(when, today);
+    if (screen_period.empty() && tag != "event" && spoken.empty()) {
+        return filing;
+    }
+    filing.file = true;
+    filing.type = tag == "event"  ? journal_service::ItemType::kEvent
+                  : tag == "note" ? journal_service::ItemType::kNote
+                                  : journal_service::ItemType::kTask;
+    if (!spoken.empty()) {
+        filing.period = spoken;
+    } else if (journal_period::IsValidKey(screen_period)) {
+        filing.period = screen_period;
+    } else {
+        filing.period = journal_period::DayKey(today);
+    }
+    return filing;
+}
+
 }  // namespace
 
 esp_err_t Init()
@@ -602,6 +677,7 @@ bool BeginArchivedTranscription(const std::string& recording_id)
         s_snapshot.clip_saved = true;  // the recording already lives on SD
         s_snapshot.transcript_saved = false;
         s_pending_recording_id = recording_id;
+        s_journal_context.clear();
     }
 
     if (transcription_service::BeginTranscription(clip)) {
@@ -668,6 +744,7 @@ bool HandlePowerPressDown(const Context& context)
     }
 
     ResetToIdleLocked();
+    s_journal_context = context.journal_period;
     s_snapshot.phase = Phase::kArmed;
     s_snapshot.allowed = true;
     s_snapshot.last_status_message = kArmedStatus;
@@ -887,6 +964,8 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
     std::string pending_recording_id;
     std::string transcript_text;
     std::string classified_tag;
+    std::string classified_when;
+    std::string journal_context;
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.request_in_flight = event.snapshot.request_in_flight;
@@ -896,6 +975,8 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
             pending_recording_id = s_pending_recording_id;
             transcript_text = event.snapshot.last_transcript;
             classified_tag = event.snapshot.last_tag;
+            classified_when = event.snapshot.last_when;
+            journal_context = s_journal_context;
         }
     }
 
@@ -904,7 +985,23 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         // the archive event that SaveTranscript fires already shows them on the right page.
         bool retagged = false;
         auto tag = recording_archive_service::RecordingTag::kNote;
-        if (classified_tag == "task") {
+        const JournalFiling filing =
+            DecideJournalFiling(classified_tag, classified_when, journal_context);
+        std::string journal_item_id;
+        if (filing.file) {
+            // The journal item owns the take from now on; the recording stays a Note on SD and
+            // is hidden from the collections through its journal link.
+            journal_item_id = journal_service::CreateItem(filing.type, transcript_text,
+                                                          filing.period, pending_recording_id);
+            if (!journal_item_id.empty()) {
+                (void)recording_archive_service::SetRecordingJournalItem(pending_recording_id,
+                                                                         journal_item_id);
+            }
+            ESP_LOGI(kTag, "Journal filing: id=%s type=%s period=%s item=%s",
+                     pending_recording_id.c_str(), journal_service::TypeName(filing.type),
+                     filing.period.c_str(),
+                     journal_item_id.empty() ? "<failed>" : journal_item_id.c_str());
+        } else if (classified_tag == "task") {
             tag = recording_archive_service::RecordingTag::kTask;
         } else if (classified_tag == "idea") {
             tag = recording_archive_service::RecordingTag::kIdea;
@@ -934,6 +1031,10 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         s_snapshot.last_transcript = transcript_text;
         s_snapshot.auto_tagged = !classified_tag.empty();
         s_snapshot.auto_tag = retagged ? tag : recording_archive_service::RecordingTag::kNote;
+        s_snapshot.journal_filed = !journal_item_id.empty();
+        s_snapshot.journal_type = s_snapshot.journal_filed ? journal_service::TypeName(filing.type)
+                                                           : std::string();
+        s_snapshot.journal_period = s_snapshot.journal_filed ? filing.period : std::string();
         s_snapshot.phase = Phase::kComplete;
         s_snapshot.request_in_flight = false;
         s_snapshot.last_status_message = save_result.transcript_saved

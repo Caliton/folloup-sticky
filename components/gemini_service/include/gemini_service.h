@@ -90,8 +90,13 @@ struct TranscriptionResult {
     bool success = false;
     int http_status = 0;
     std::string transcript = {};
-    // Only set by a classifying Transcribe: "note", "task" or "idea" (empty = not classified).
+    // Only set by a classifying Transcribe: "note", "task", "idea" or "event" (empty = not
+    // classified).
     std::string tag = {};
+    // Classifying Transcribe only: when the speaker said it should happen -- "today",
+    // "tomorrow", "this_week", "next_week", "this_month", "next_month", a "YYYY-MM-DD" /
+    // "YYYY-MM" / "YYYY" date, or empty.
+    std::string when = {};
     std::string error_code = {};
     std::string error_message = {};
     uint32_t clip_duration_ms = 0;

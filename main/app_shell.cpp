@@ -38,6 +38,9 @@
 #include "settings_page_runtime.h"
 #include "details_page_runtime.h"
 #include "follow_up_page_runtime.h"
+#include "journal_page_runtime.h"
+#include "journal_period.h"
+#include "journal_service.h"
 #include "notes_page_runtime.h"
 #include "books_page_runtime.h"
 #include "reader_page_runtime.h"
@@ -158,6 +161,14 @@ bool ScreenActiveForRefresh(display_service::ScreenId screen)
            display_service::GetCurrentScreen() == screen;
 }
 
+// Today's journal tasks and the review count, for the dashboard's progress bar and badge.
+void RefreshDashboardJournalSummary(bool request_refresh_if_active)
+{
+    const journal_page_runtime::Summary summary = journal_page_runtime::ComputeSummary();
+    (void)dashboard_page_runtime::SetJournalSummary(summary.today_tasks, summary.today_tasks_done,
+                                                    summary.pending, request_refresh_if_active);
+}
+
 footer_runtime::LayoutState FooterLayoutForScreen(display_service::ScreenId screen)
 {
     footer_runtime::LayoutState layout = {};
@@ -209,6 +220,8 @@ esp_err_t ShowHomeScreen(display_service::RefreshMode refresh_mode)
     if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
         ESP_LOGW(kTag, "Footer sync before home screen failed: %s", esp_err_to_name(footer_err));
     }
+    RefreshDashboardJournalSummary(false);
+    journal_page_runtime::Release();
     const esp_err_t dashboard_err = dashboard_page_runtime::SyncFromService(false);
     if (dashboard_err != ESP_OK && dashboard_err != ESP_ERR_INVALID_STATE) {
         ESP_LOGW(kTag, "Dashboard sync before home screen failed: %s",
@@ -394,6 +407,28 @@ esp_err_t ShowTodosScreen(display_service::RefreshMode refresh_mode)
                                              "show_todos_screen");
 }
 
+esp_err_t ShowJournalScreen(display_service::RefreshMode refresh_mode)
+{
+    SyncStatusBarState("show_journal_screen");
+    // Load the items first: the landing focus (review group vs level switcher) depends on them.
+    journal_page_runtime::PrepareForShow();
+    page_input_runtime::ResetFocusForScreen(display_service::ScreenId::kJournal);
+    footer_runtime::SetLayoutState(FooterLayoutForScreen(display_service::ScreenId::kJournal));
+    footer_runtime::SetProjectionState(
+        page_input_runtime::BuildFooterProjectionForScreen(display_service::ScreenId::kJournal));
+    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
+    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Footer sync before journal screen failed: %s",
+                 esp_err_to_name(footer_err));
+    }
+    const esp_err_t state_err = journal_page_runtime::UpdateDisplayState();
+    if (state_err != ESP_OK && state_err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Journal page state before show failed: %s", esp_err_to_name(state_err));
+    }
+    return display_service::SetCurrentScreen(display_service::ScreenId::kJournal, refresh_mode,
+                                             "show_journal_screen");
+}
+
 esp_err_t ShowFollowUpScreen(display_service::RefreshMode refresh_mode)
 {
     SyncStatusBarState("show_follow_up_screen");
@@ -539,6 +574,10 @@ void ShowDetailsScreenIfRequested()
         source = DetailsPageSource::kFollowUp;
     }
     if (recording_id.empty()) {
+        recording_id = journal_page_runtime::ConsumePendingViewDetails();
+        source = DetailsPageSource::kJournal;
+    }
+    if (recording_id.empty()) {
         return;
     }
     const esp_err_t err =
@@ -564,6 +603,9 @@ void HandleDetailsBackIfRequested()
             break;
         case DetailsPageSource::kFollowUp:
             err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
+            break;
+        case DetailsPageSource::kJournal:
+            err = ShowJournalScreen(display_service::RefreshMode::kFull);
             break;
         default:
             err = ShowHomeScreen(display_service::RefreshMode::kFull);
@@ -739,6 +781,13 @@ app_interaction::InputResult HandleFooterActivate(footer_runtime::FooterFocusIte
 // page does not exist yet, letting dashboard_page_runtime fall back to its "coming soon" toast.
 bool HandleDashboardMenuItem(int menu_index, void*)
 {
+    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kJournal)) {
+        const esp_err_t err = ShowJournalScreen(display_service::RefreshMode::kFull);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(kTag, "Show journal screen failed: %s", esp_err_to_name(err));
+        }
+        return true;
+    }
     if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kVibeCheck)) {
         const esp_err_t err = ShowVibeCheckScreen(display_service::RefreshMode::kFull);
         if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
@@ -857,6 +906,9 @@ recording_session_service::Context BuildRecordingSessionContext()
     context.overlay_visible =
         overlay_runtime::IsShutdownModalVisible() || overlay_runtime::IsStorageModalVisible() ||
         overlay_runtime::IsSelectModalVisible() || overlay_runtime::IsKeyboardVisible();
+    if (display_service::GetCurrentScreen() == display_service::ScreenId::kJournal) {
+        context.journal_period = journal_page_runtime::RecordingPeriod();
+    }
     return context;
 }
 
@@ -985,7 +1037,16 @@ void HandleRecordingSessionEvent(const recording_session_service::Event& event, 
         }
         case recording_session_service::Phase::kComplete: {
             epaper_ui::ToastState toast = {};
-            if (event.snapshot.transcript_saved && event.snapshot.auto_tagged) {
+            journal_period::Date today = {};
+            if (event.snapshot.journal_filed && journal_period::Today(&today)) {
+                // "Tarefa no diário: Semana 40" -- where the take was filed.
+                journal_service::ItemType type = journal_service::ItemType::kTask;
+                (void)journal_service::ParseType(event.snapshot.journal_type, &type);
+                const std::string text = std::string(journal_service::TypeLabel(type)) +
+                                         " no diário: " +
+                                         journal_period::Label(event.snapshot.journal_period, today);
+                toast = BuildToast(text.c_str(), EmbeddedIconId::kCheck);
+            } else if (event.snapshot.transcript_saved && event.snapshot.auto_tagged) {
                 // The tag menu was skipped, so say where Gemini filed the take.
                 switch (event.snapshot.auto_tag) {
                     case recording_archive_service::RecordingTag::kTask:
@@ -1117,6 +1178,7 @@ void HandleStorageEvent(const storage_service::Event& event, void*)
         (event.snapshot.operation == storage_service::Operation::kFormatSd ||
          event.snapshot.operation == storage_service::Operation::kExitUsbMode)) {
         books_page_runtime::InvalidateLibrary();
+        journal_service::Reload();
     }
 
     if (event.snapshot.operation == storage_service::Operation::kFormatSd) {
@@ -1343,6 +1405,8 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
             !todos_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !follow_up_page_runtime::HandleItemActionSelection(
+                overlay_result.select_modal_selected_index) &&
+            !journal_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !time_page_runtime::HandleSelectModalSubmit(
                 overlay_result.select_modal_selected_index)) {
@@ -1679,6 +1743,26 @@ void InitTimezoneService()
     }
 }
 
+void HandleJournalEvent(const journal_service::Event&, void*)
+{
+    RefreshDashboardJournalSummary(ScreenActiveForRefresh(display_service::ScreenId::kHome));
+    if (display_service::GetCurrentScreen() == display_service::ScreenId::kJournal) {
+        const esp_err_t err = journal_page_runtime::SyncFromStore(true);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(kTag, "Journal page update after change failed: %s", esp_err_to_name(err));
+        }
+    }
+}
+
+void InitJournalService()
+{
+    (void)journal_service::Init();
+    if (!journal_service::AddListener(HandleJournalEvent, nullptr)) {
+        ESP_LOGW(kTag, "Journal listener slots exhausted");
+    }
+    RefreshDashboardJournalSummary(false);
+}
+
 void HandleRecordingArchiveEvent(const recording_archive_service::Event&, void*)
 {
     const bool home_active = ScreenActiveForRefresh(display_service::ScreenId::kHome);
@@ -1876,6 +1960,7 @@ void Run()
     InitDeviceSleepRuntime();
     InitTimezoneService();
     InitRecordingArchiveService();
+    InitJournalService();
     InitGeminiService();
     InitWifiService();
     InitRecordingService();

@@ -211,6 +211,23 @@ esp_err_t SyncFromService(bool request_refresh_if_active)
     return err;
 }
 
+esp_err_t SetJournalSummary(int today_tasks, int today_tasks_done, int pending,
+                            bool request_refresh_if_active)
+{
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_coordinator.SetJournalSummary(today_tasks, today_tasks_done, pending);
+    }
+    const esp_err_t err =
+        request_refresh_if_active
+            ? UpdateDisplayStateAndRequestRefresh(display_service::RefreshMode::kPartial)
+            : UpdateDisplayState();
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Dashboard journal update failed: %s", esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t RefreshWelcomeIfRotated()
 {
     const uint32_t period = DashboardPageCoordinator::WelcomePeriodsSinceEpoch();

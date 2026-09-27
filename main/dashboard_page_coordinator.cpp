@@ -71,6 +71,14 @@ uint32_t DashboardPageCoordinator::WelcomePeriodsSinceEpoch()
     return static_cast<uint32_t>(now / period_seconds);
 }
 
+void DashboardPageCoordinator::SetJournalSummary(int today_tasks, int today_tasks_done,
+                                                 int pending)
+{
+    journal_today_tasks_ = today_tasks;
+    journal_today_tasks_done_ = today_tasks_done;
+    journal_pending_ = pending;
+}
+
 void DashboardPageCoordinator::RefreshFromArchive(
     const recording_archive_service::Snapshot& snapshot)
 {
@@ -135,8 +143,17 @@ epaper_ui::DashboardPageState DashboardPageCoordinator::BuildState() const
     state.welcome_message.title_text =
         epaper_ui::WelcomeMessageTitle(welcome_seed_ + WelcomePeriodsSinceEpoch());
 
-    // Empty archive: invite the first capture. Otherwise show the task tracker.
-    if (archive_.recording_count == 0) {
+    // Empty archive: invite the first capture. Otherwise show the task tracker -- today's
+    // journal tasks when the day has any, else the recorded Tasks collection.
+    if (journal_today_tasks_ > 0) {
+        state.shows_completion_banner = false;
+        const int total = journal_today_tasks_;
+        const int done = journal_today_tasks_done_;
+        state.current_progress.label_text = "Tarefas de hoje";
+        state.current_progress.status_text = std::to_string(done) + "/" + std::to_string(total) +
+                                             (done == 1 ? " concluída" : " concluídas");
+        state.current_progress.progress_percent = (done * 100) / total;
+    } else if (archive_.recording_count == 0) {
         state.shows_completion_banner = true;
         state.completion_banner.icon = EmbeddedIconId::kTaskStart;
         state.completion_banner.message_text = "Grave sua primeira nota com o microfone";
@@ -157,6 +174,8 @@ epaper_ui::DashboardPageState DashboardPageCoordinator::BuildState() const
     }
 
     state.menu.selected_index = FocusedMenuIndex();
+    state.menu.shows_journal_badge = journal_pending_ > 0;
+    state.menu.journal_badge_text = std::to_string(journal_pending_);
     state.menu.shows_follow_up_badge = archive_.follow_up_recording_count > 0;
     state.menu.shows_notes_badge = archive_.notes_recording_count > 0;
     state.menu.shows_todos_badge = archive_.todo_recording_count > 0;

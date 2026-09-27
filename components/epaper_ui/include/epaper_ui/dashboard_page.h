@@ -13,12 +13,13 @@
 
 namespace epaper_ui {
 
-// The dashboard's main menu has six fixed items; Follow up / Notes / Todos can show a badge.
-inline constexpr int kDashboardMenuItemCount = 6;
+// The dashboard's main menu has seven fixed items; Follow up / Notes / Todos can show a badge.
+inline constexpr int kDashboardMenuItemCount = 7;
 
 // Fixed slot order of the dashboard menu (must match kMenuLabels in dashboard_page.cpp).
 enum class DashboardMenuItem : int {
-    kFollowUp = 0,
+    kJournal = 0,
+    kFollowUp,
     kSummarize,
     kVibeCheck,
     kNotes,
@@ -28,6 +29,9 @@ enum class DashboardMenuItem : int {
 
 struct DashboardPageMenuState {
     int selected_index = -1;
+    // Journal badge: items waiting for review ("3 pendentes").
+    bool shows_journal_badge = false;
+    std::string journal_badge_text = {};
     bool shows_follow_up_badge = false;
     bool shows_notes_badge = false;
     bool shows_todos_badge = false;
