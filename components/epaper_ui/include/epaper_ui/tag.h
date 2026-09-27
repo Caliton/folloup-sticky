@@ -29,6 +29,8 @@ struct TagStyle {
     int vertical_padding = design::tag::kVerticalPadding;
     int border_thickness = design::tag::kBorderThickness;
     int stroke_thickness = design::button::kStrokeThickness;
+    // Pills in a column line up when they share a width; shorter labels are centered.
+    int min_width = 0;
 };
 
 UiRect TagBounds(int origin_x, int origin_y, const TagState& state, const TagStyle& style);

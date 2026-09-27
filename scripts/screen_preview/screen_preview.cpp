@@ -623,6 +623,16 @@ void SceneJournalReviewSelected(uint8_t* fb)
     DrawJournal(fb, journal_view::Level::kDay, focus);
 }
 
+void SceneJournalTodayActive(uint8_t* fb)
+{
+    journal_view::FocusState focus = {};
+    focus.visible_group = 1;
+    focus.focused_group = 1;
+    focus.active_group = 1;
+    focus.selected_item = 1;
+    DrawJournal(fb, journal_view::Level::kDay, focus);
+}
+
 void SceneJournalActions(uint8_t* fb)
 {
     SceneJournalReviewSelected(fb);
@@ -677,6 +687,7 @@ std::vector<Scene> Scenes()
         {"diario_dia", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kDay); }},
         {"diario_dia_pendente", SceneJournalReviewSelected},
         {"diario_acoes", SceneJournalActions},
+        {"diario_dia_hoje", SceneJournalTodayActive},
         {"diario_semana", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kWeek); }},
         {"diario_mes", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kMonth); }},
         {"diario_ano", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kYear); }},

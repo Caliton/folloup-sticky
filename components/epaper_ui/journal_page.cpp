@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "epaper_ui/tag.h"
 #include "render_utils.h"
 
 namespace epaper_ui {
@@ -39,6 +40,10 @@ TimelineListStyle TimelineStyle(const UiRect& timeline)
     TimelineListStyle style = {};
     style.width = timeline.width;
     style.height = timeline.height;
+    // Type pills (Tarefa / Nota / Evento) share the widest one's width so their left edges
+    // line up down the list.
+    style.item.header.tag.min_width =
+        TagBounds(0, 0, {.label_text = "Evento"}, style.item.header.tag).width;
     return style;
 }
 

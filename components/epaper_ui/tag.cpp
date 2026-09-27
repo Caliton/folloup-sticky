@@ -1,5 +1,7 @@
 #include "epaper_ui/tag.h"
 
+#include <algorithm>
+
 #include "render_utils.h"
 
 namespace epaper_ui {
@@ -43,7 +45,7 @@ UiRect TagBounds(int origin_x, int origin_y, const TagState& state, const TagSty
     return {
         origin_x,
         origin_y,
-        text_width + (2 * horizontal_padding),
+        std::max(text_width + (2 * horizontal_padding), ClampPositive(style.min_width)),
         text_height + (2 * vertical_padding),
     };
 }
@@ -80,7 +82,8 @@ void DrawTag(uint8_t* framebuffer,
                                   style.border_color);
     }
 
-    const int text_x = bounds.x + ClampPositive(style.horizontal_padding);
+    const int text_x =
+        bounds.x + CenterOffset(bounds.width, MeasureText(style.role, state.label_text));
     const int text_y = bounds.y + CenterOffset(bounds.height, LineHeight(style.role));
     const auto draw_glyphs = [&](int x, int y, uint8_t tone) {
         DrawTypographyText(framebuffer, raw_width, raw_height, portrait_width, portrait_height, x, y,
