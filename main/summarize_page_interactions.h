@@ -18,7 +18,7 @@ enum class ActivateIntent : uint8_t {
     kToggleSegment,
     kEnterScroll,
     kRequestNotesSummary,
-    kRequestTodosSummary,
+    kRequestWeekSummary,
 };
 
 struct ActivateResult {
@@ -37,7 +37,7 @@ struct ActivateCallbacks {
     std::function<void()> toggle_segment;
     std::function<void()> enter_scroll;
     std::function<void()> request_notes_summary;
-    std::function<void()> request_todos_summary;
+    std::function<void()> request_week_summary;
 };
 
 // gemini_ready gates the Get-summary action: when Gemini isn't connected the tap is a no-op

@@ -49,7 +49,6 @@
 #include "nvs.h"
 #include "onboarding_page_runtime.h"
 #include "status_bar_runtime.h"
-#include "todos_page_runtime.h"
 #include "storage_service.h"
 #include "summarize_page_runtime.h"
 #include "summary_service.h"
@@ -389,26 +388,6 @@ void HandleReaderBackIfRequested()
     }
 }
 
-esp_err_t ShowTodosScreen(display_service::RefreshMode refresh_mode)
-{
-    SyncStatusBarState("show_todos_screen");
-    page_input_runtime::ResetFocusForScreen(display_service::ScreenId::kTodos);
-    footer_runtime::SetLayoutState(FooterLayoutForScreen(display_service::ScreenId::kTodos));
-    footer_runtime::SetProjectionState(
-        page_input_runtime::BuildFooterProjectionForScreen(display_service::ScreenId::kTodos));
-    const esp_err_t footer_err = footer_runtime::UpdateDisplayState();
-    if (footer_err != ESP_OK && footer_err != ESP_ERR_INVALID_STATE) {
-        ESP_LOGW(kTag, "Footer sync before todos screen failed: %s", esp_err_to_name(footer_err));
-    }
-    // Build the timeline from the archive (SD read) before showing.
-    const esp_err_t sync_err = todos_page_runtime::SyncFromArchive(false);
-    if (sync_err != ESP_OK && sync_err != ESP_ERR_INVALID_STATE) {
-        ESP_LOGW(kTag, "Todos page sync before show failed: %s", esp_err_to_name(sync_err));
-    }
-    return display_service::SetCurrentScreen(display_service::ScreenId::kTodos, refresh_mode,
-                                             "show_todos_screen");
-}
-
 esp_err_t ShowJournalScreen(display_service::RefreshMode refresh_mode)
 {
     SyncStatusBarState("show_journal_screen");
@@ -568,10 +547,6 @@ void ShowDetailsScreenIfRequested()
     std::string recording_id = notes_page_runtime::ConsumePendingViewDetails();
     DetailsPageSource source = DetailsPageSource::kNotes;
     if (recording_id.empty()) {
-        recording_id = todos_page_runtime::ConsumePendingViewDetails();
-        source = DetailsPageSource::kTodos;
-    }
-    if (recording_id.empty()) {
         recording_id = follow_up_page_runtime::ConsumePendingViewDetails();
         source = DetailsPageSource::kFollowUp;
     }
@@ -599,9 +574,6 @@ void HandleDetailsBackIfRequested()
     switch (details_page_runtime::SourcePage()) {
         case DetailsPageSource::kNotes:
             err = ShowNotesScreen(display_service::RefreshMode::kFull);
-            break;
-        case DetailsPageSource::kTodos:
-            err = ShowTodosScreen(display_service::RefreshMode::kFull);
             break;
         case DetailsPageSource::kFollowUp:
             err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
@@ -779,60 +751,51 @@ app_interaction::InputResult HandleFooterActivate(footer_runtime::FooterFocusIte
     return result;
 }
 
+// The Ideias page's Checar vibe / Resumir buttons.
+void ShowIdeasTargetIfRequested()
+{
+    esp_err_t err = ESP_OK;
+    switch (notes_page_runtime::ConsumePendingOpen()) {
+        case notes_page_runtime::OpenTarget::kVibeCheck:
+            err = ShowVibeCheckScreen(display_service::RefreshMode::kFull);
+            break;
+        case notes_page_runtime::OpenTarget::kSummarize:
+            err = ShowSummarizeScreen(display_service::RefreshMode::kFull);
+            break;
+        case notes_page_runtime::OpenTarget::kNone:
+        default:
+            return;
+    }
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Ideas page navigation failed: %s", esp_err_to_name(err));
+    }
+}
+
 // Routes a dashboard menu tap/press to its page. Returns false for items whose destination
 // page does not exist yet, letting dashboard_page_runtime fall back to its "coming soon" toast.
 bool HandleDashboardMenuItem(int menu_index, void*)
 {
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kJournal)) {
-        const esp_err_t err = ShowJournalScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show journal screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
+    esp_err_t err = ESP_OK;
+    switch (static_cast<epaper_ui::DashboardMenuItem>(menu_index)) {
+        case epaper_ui::DashboardMenuItem::kJournal:
+            err = ShowJournalScreen(display_service::RefreshMode::kFull);
+            break;
+        case epaper_ui::DashboardMenuItem::kIdeas:
+            err = ShowNotesScreen(display_service::RefreshMode::kFull);
+            break;
+        case epaper_ui::DashboardMenuItem::kFollowUp:
+            err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
+            break;
+        case epaper_ui::DashboardMenuItem::kBooks:
+            err = ShowBooksScreen(display_service::RefreshMode::kFull);
+            break;
+        default:
+            return false;
     }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kVibeCheck)) {
-        const esp_err_t err = ShowVibeCheckScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show vibe check screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(kTag, "Dashboard menu item %d failed: %s", menu_index, esp_err_to_name(err));
     }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kSummarize)) {
-        const esp_err_t err = ShowSummarizeScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show summarize screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
-    }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kNotes)) {
-        const esp_err_t err = ShowNotesScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show notes screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
-    }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kTodos)) {
-        const esp_err_t err = ShowTodosScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show todos screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
-    }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kBooks)) {
-        const esp_err_t err = ShowBooksScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show books screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
-    }
-    if (menu_index == static_cast<int>(epaper_ui::DashboardMenuItem::kFollowUp)) {
-        const esp_err_t err = ShowFollowUpScreen(display_service::RefreshMode::kFull);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(kTag, "Show follow-up screen failed: %s", esp_err_to_name(err));
-        }
-        return true;
-    }
-    return false;
+    return true;
 }
 
 void ConfirmPendingOtaImage()
@@ -1405,8 +1368,6 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
                 overlay_result.select_modal_selected_index) &&
             !notes_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
-            !todos_page_runtime::HandleItemActionSelection(
-                overlay_result.select_modal_selected_index) &&
             !follow_up_page_runtime::HandleItemActionSelection(
                 overlay_result.select_modal_selected_index) &&
             !journal_page_runtime::HandleItemActionSelection(
@@ -1512,6 +1473,7 @@ void HandleDispatchedButtonEvent(const button_service::ButtonEventInfo& event)
         HandleReaderBackIfRequested();
         HandleOnboardingDismissIfRequested();
         ShowOnboardingFromSettingsIfRequested();
+        ShowIdeasTargetIfRequested();
         FlushOverlayFeedback();
         return;
     }
@@ -1789,9 +1751,6 @@ void HandleRecordingArchiveEvent(const recording_archive_service::Event&, void*)
         case display_service::ScreenId::kNotes:
             page_err = notes_page_runtime::SyncFromArchive(true);
             break;
-        case display_service::ScreenId::kTodos:
-            page_err = todos_page_runtime::SyncFromArchive(true);
-            break;
         case display_service::ScreenId::kFollowUp:
             page_err = follow_up_page_runtime::SyncFromArchive(true);
             break;
@@ -1819,6 +1778,8 @@ void InitRecordingArchiveService()
 {
     recording_archive_service::SetEventHandler(HandleRecordingArchiveEvent, nullptr);
     recording_archive_service::Init();
+    // Tasks moved to the journal: park the retired Tasks collection out of the app (one-time).
+    (void)recording_archive_service::ArchiveLegacyTasks();
 }
 
 void InitGeminiService()

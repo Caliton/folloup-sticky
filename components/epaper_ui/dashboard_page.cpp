@@ -16,7 +16,7 @@ constexpr int kMiddleMenuGap = design::spacing::k8;
 constexpr auto kProgressLabelRole = design::TypographyRole::kLabelSmallBlack;
 
 constexpr std::array<const char*, kDashboardMenuItemCount> kMenuLabels = {
-    "Diário", "Acompanhar", "Resumir", "Checar vibe", "Notas", "Tarefas", "Livros",
+    "Diário", "Ideias", "Acompanhar", "Livros",
 };
 
 int PageWidth(int portrait_width)
@@ -53,7 +53,7 @@ MenuContainerState MenuState(const DashboardPageState& state)
 
 // Rows shrink (down to kMinMenuItemHeight) when a two-line greeting plus the completion banner
 // would otherwise push the last menu item under the footer.
-constexpr int kMinMenuItemHeight = design::spacing::k48;
+constexpr int kMinMenuItemHeight = design::spacing::k56;
 constexpr int kMenuFooterGap = design::spacing::k8;
 
 MenuContainerStyle MenuStyle(int width, int item_height)
@@ -108,10 +108,8 @@ bool MenuItemShowsBadge(const DashboardPageMenuState& menu, int index)
             return menu.shows_journal_badge;
         case DashboardMenuItem::kFollowUp:
             return menu.shows_follow_up_badge;
-        case DashboardMenuItem::kNotes:
+        case DashboardMenuItem::kIdeas:
             return menu.shows_notes_badge;
-        case DashboardMenuItem::kTodos:
-            return menu.shows_todos_badge;
         default:
             return false;
     }
@@ -124,10 +122,8 @@ BadgeState MenuItemBadge(const DashboardPageMenuState& menu, int index)
             return {menu.journal_badge_text, false};
         case DashboardMenuItem::kFollowUp:
             return {menu.follow_up_badge_text, false};
-        case DashboardMenuItem::kNotes:
+        case DashboardMenuItem::kIdeas:
             return {menu.notes_badge_text, false};
-        case DashboardMenuItem::kTodos:
-            return {menu.todos_badge_text, false};
         default:
             return {};
     }

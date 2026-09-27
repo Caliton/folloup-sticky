@@ -11,7 +11,8 @@ namespace summary_service {
 enum class SummaryKind : uint8_t {
     kNone = 0,
     kNotes,
-    kTodos,
+    // This week in the bullet journal (journal_service): week + day items and pending ones.
+    kWeek,
 };
 
 enum class RequestPhase : uint8_t {
@@ -52,7 +53,7 @@ struct Snapshot {
     bool initialized = false;
     bool storage_available = false;
     CacheEntrySnapshot notes = {};
-    CacheEntrySnapshot todos = {};
+    CacheEntrySnapshot week = {};
     RequestSnapshot request = {};
     uint32_t request_generation = 0;
 };
@@ -73,7 +74,7 @@ Snapshot GetSnapshot();
 bool RefreshCachedSummaries();
 // Drop cached summaries after an SD format so the Summarize page doesn't show stale results.
 void ResetForFormat();
-// Queue an async summary generation for Notes or Todos. Returns false if it can't be queued
+// Queue an async summary generation for Notes or the journal week. Returns false if it can't be queued
 // (not initialized, a request already in flight, or queue full). Progress is reported via events.
 bool RequestSummary(SummaryKind kind);
 

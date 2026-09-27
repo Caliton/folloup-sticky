@@ -1378,6 +1378,56 @@ bool UpdateRecordingTag(const std::string& recording_id, RecordingTag tag)
     return context.applied;
 }
 
+struct LegacyTasksContext {
+    int moved = 0;
+};
+
+esp_err_t ArchiveLegacyTasksOnMountedFilesystem(const char* mount_point, void* raw_context)
+{
+    auto* context = static_cast<LegacyTasksContext*>(raw_context);
+    const std::string source = JoinPath(mount_point, "todos");
+    DIR* dir = opendir(source.c_str());
+    if (dir == nullptr) {
+        return ESP_OK;  // nothing left to move
+    }
+    const std::string target = JoinPath(mount_point, "tarefas_antigas");
+    if (!EnsureDirectoryExists(target)) {
+        closedir(dir);
+        return ESP_FAIL;
+    }
+    std::vector<std::string> names;
+    while (struct dirent* entry = readdir(dir)) {
+        if (entry->d_name[0] != '.') {
+            names.push_back(entry->d_name);
+        }
+    }
+    closedir(dir);
+    for (const std::string& name : names) {
+        const std::string from = JoinPath(source, name);
+        const std::string to = JoinPath(target, name);
+        std::remove(to.c_str());  // FAT cannot rename over an existing file
+        if (std::rename(from.c_str(), to.c_str()) == 0) {
+            ++context->moved;
+        } else {
+            ESP_LOGW(kTag, "Could not archive %s: errno=%d", from.c_str(), errno);
+        }
+    }
+    (void)rmdir(source.c_str());
+    return ESP_OK;
+}
+
+int ArchiveLegacyTasks()
+{
+    LegacyTasksContext context = {};
+    (void)storage_service::RunWithMountedFilesystem(ArchiveLegacyTasksOnMountedFilesystem,
+                                                    &context);
+    if (context.moved > 0) {
+        ESP_LOGI(kTag, "Archived %d legacy task file(s) to tarefas_antigas/", context.moved);
+        (void)Refresh();
+    }
+    return context.moved;
+}
+
 struct ResolvePathContext {
     const std::string* recording_id = nullptr;
     std::string* path = nullptr;

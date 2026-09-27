@@ -41,6 +41,16 @@ bool HandleItemActionSelection(int selected_index);
 // Details screen after input dispatch returns). Empty when none is pending.
 std::string ConsumePendingViewDetails();
 
+// The Checar vibe / Resumir buttons. Deferred so the screen changes after input dispatch;
+// app_shell polls ConsumePendingOpen().
+enum class OpenTarget : uint8_t {
+    kNone = 0,
+    kVibeCheck,
+    kSummarize,
+};
+void RequestOpen(OpenTarget target);
+OpenTarget ConsumePendingOpen();
+
 // A value snapshot of the currently selected item, for the item-actions modal (safe to use
 // outside the runtime lock).
 struct SelectedEntrySnapshot {

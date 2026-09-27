@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 
+#include "epaper_ui/button.h"
 #include "epaper_ui/global_footer.h"
 #include "epaper_ui/overlay_geometry.h"
 #include "epaper_ui/status_bar.h"
@@ -13,8 +14,11 @@ namespace epaper_ui {
 
 struct NotesPageState {
     int navigation_focus_index = -1;
-    std::string title_text = "Notas";
+    std::string title_text = "Ideias";
     TimelineListState timeline = {};
+    // Bottom action row (the vibe check and summaries live on this page).
+    ButtonState vibe_check_button = {};
+    ButtonState summarize_button = {};
 
     bool operator==(const NotesPageState& other) const = default;
 };

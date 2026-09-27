@@ -29,7 +29,6 @@
 #include "epaper_ui/summarize_page.h"
 #include "epaper_ui/time_page.h"
 #include "epaper_ui/toast.h"
-#include "epaper_ui/todos_page.h"
 #include "epaper_ui/vibe_check_page.h"
 #include "epaper_ui/welcome_message.h"
 #include "epaper_ui/wifi_page.h"
@@ -129,30 +128,6 @@ epaper_ui::TimelineListState NotesTimeline()
     return timeline;
 }
 
-epaper_ui::TimelineListState TodosTimeline()
-{
-    epaper_ui::TimelineListState timeline = {};
-    timeline.item_label_singular = "tarefa";
-    timeline.item_label_plural = "tarefas";
-    timeline.empty_state_text = "Nenhuma tarefa ainda";
-    timeline.empty_state_icon_asset = project_assets::GetIcon(EmbeddedIconId::kTaskStart);
-    timeline.visible_group_index = 0;
-
-    auto todo = [](const char* time, const char* duration, const char* body, bool done) {
-        epaper_ui::ListItemState item = Item(time, duration, "Tarefa", body);
-        item.accessory.kind = epaper_ui::ListItemAccessoryKind::kCheckbox;
-        item.accessory.checked = done;
-        return item;
-    };
-    timeline.groups = {
-        {"Hoje",
-         {todo("13:10", "12s", "Comprar bateria 18650 extra.", true),
-          todo("10:45", "20s", "Mandar o STL do case novo pra impressão.", false),
-          todo("08:30", "9s", "Ligar pro fornecedor da tela.", false)}},
-    };
-    return timeline;
-}
-
 // ---------------------------------------------------------------------------------------------
 // Pages. Each scene draws exactly like display_service: clear to white, draw the page (which
 // draws its own status bar/footer), then any overlays on top.
@@ -164,7 +139,7 @@ epaper_ui::DashboardPageState Dashboard()
     state.welcome_message.current_date = {.weekday_text = "Sábado",
                                           .date_text = "26 de setembro de 2026"};
     state.welcome_message.title_text = epaper_ui::WelcomeMessageTitle(0);
-    state.current_progress = {.label_text = "Suas tarefas",
+    state.current_progress = {.label_text = "Tarefas de hoje",
                               .status_text = "1/3 concluída",
                               .progress_percent = 33};
     state.menu.shows_follow_up_badge = true;
@@ -182,7 +157,7 @@ void SceneDashboard(uint8_t* fb) { DrawDashboard(fb, Dashboard()); }
 void SceneDashboardFocus(uint8_t* fb)
 {
     epaper_ui::DashboardPageState state = Dashboard();
-    state.menu.selected_index = static_cast<int>(epaper_ui::DashboardMenuItem::kNotes);
+    state.menu.selected_index = static_cast<int>(epaper_ui::DashboardMenuItem::kIdeas);
     state.menu.shows_notes_badge = true;
     DrawDashboard(fb, state);
 }
@@ -385,7 +360,7 @@ void SceneSummarize(uint8_t* fb, const char* empty_message)
 {
     const bool empty = empty_message[0] != '\0';
     epaper_ui::SummarizePageState state = {};
-    state.segment_control.labels = {"Notas", "Tarefas", ""};
+    state.segment_control.labels = {"Ideias", "Semana", ""};
     state.segment_control.segment_count = epaper_ui::kSegmentControlDefaultSegmentCount;
     if (empty) {
         state.scroll_container.empty_state_message = empty_message;
@@ -401,10 +376,18 @@ void SceneSummarize(uint8_t* fb, const char* empty_message)
                                  state, StatusBar(), Footer());
 }
 
-void SceneNotes(uint8_t* fb, bool empty)
+epaper_ui::NotesPageState IdeasPage()
 {
     epaper_ui::NotesPageState state = {};
     state.timeline = NotesTimeline();
+    state.vibe_check_button = {.label_text = "Checar vibe"};
+    state.summarize_button = {.label_text = "Resumir"};
+    return state;
+}
+
+void SceneNotes(uint8_t* fb, bool empty)
+{
+    epaper_ui::NotesPageState state = IdeasPage();
     if (empty) {
         state.timeline.groups = {{"Hoje", {}}};
     }
@@ -414,20 +397,11 @@ void SceneNotes(uint8_t* fb, bool empty)
 
 void SceneNotesSelected(uint8_t* fb)
 {
-    epaper_ui::NotesPageState state = {};
-    state.timeline = NotesTimeline();
+    epaper_ui::NotesPageState state = IdeasPage();
     state.timeline.focused_group_index = 0;
     state.timeline.active_group_index = 0;
     state.timeline.selected_item_index = 1;
     epaper_ui::DrawNotesPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
-                             StatusBar(), Footer());
-}
-
-void SceneTodos(uint8_t* fb)
-{
-    epaper_ui::TodosPageState state = {};
-    state.timeline = TodosTimeline();
-    epaper_ui::DrawTodosPage(fb, kRawWidth, kRawHeight, kPortraitWidth, kPortraitHeight, state,
                              StatusBar(), Footer());
 }
 
@@ -700,7 +674,6 @@ std::vector<Scene> Scenes()
         {"notas", [](uint8_t* fb) { SceneNotes(fb, false); }},
         {"notas_selecionada", SceneNotesSelected},
         {"notas_vazio", [](uint8_t* fb) { SceneNotes(fb, true); }},
-        {"tarefas", SceneTodos},
         {"diario_dia", [](uint8_t* fb) { SceneJournal(fb, journal_view::Level::kDay); }},
         {"diario_dia_pendente", SceneJournalReviewSelected},
         {"diario_acoes", SceneJournalActions},

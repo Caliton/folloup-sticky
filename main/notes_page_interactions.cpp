@@ -27,7 +27,11 @@ ActivateResult HandlePrimaryActivate(NotesPageCoordinator& coordinator)
 
     result.handled = true;
     result.play_activate_cue = true;
-    if (coordinator.IsRoleFocused(NavigationItemRole::kFooterHome)) {
+    if (coordinator.IsRoleFocused(NavigationItemRole::kNotesPageVibeCheckButton)) {
+        result.intent = ActivateIntent::kShowVibeCheck;
+    } else if (coordinator.IsRoleFocused(NavigationItemRole::kNotesPageSummarizeButton)) {
+        result.intent = ActivateIntent::kShowSummarize;
+    } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterHome)) {
         result.intent = ActivateIntent::kShowHome;
     } else if (coordinator.IsRoleFocused(NavigationItemRole::kFooterSettings)) {
         result.intent = ActivateIntent::kShowSettings;
@@ -68,6 +72,16 @@ void ApplyPrimaryActivateResult(const ActivateResult& result, const ActivateCall
         case ActivateIntent::kOpenItemActions:
             if (callbacks.open_item_actions) {
                 callbacks.open_item_actions();
+            }
+            break;
+        case ActivateIntent::kShowVibeCheck:
+            if (callbacks.show_vibe_check) {
+                callbacks.show_vibe_check();
+            }
+            break;
+        case ActivateIntent::kShowSummarize:
+            if (callbacks.show_summarize) {
+                callbacks.show_summarize();
             }
             break;
         case ActivateIntent::kNone:

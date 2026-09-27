@@ -1,5 +1,8 @@
 #include "summary_service.h"
 
+#include "journal_period.h"
+#include "journal_service.h"
+
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
@@ -78,13 +81,13 @@ std::string TrimCopy(std::string value)
 // User-facing label for toasts/status text (pt-BR).
 const char* DisplayLabelForKind(SummaryKind kind)
 {
-    return kind == SummaryKind::kTodos ? "Tarefas" : "Notas";
+    return kind == SummaryKind::kWeek ? "Semana" : "Ideias";
 }
 
 // Lowercase noun used inside the Gemini prompt text (pt-BR).
 const char* PromptSubjectForKind(SummaryKind kind)
 {
-    return kind == SummaryKind::kTodos ? "tarefas" : "notas";
+    return kind == SummaryKind::kWeek ? "atividades da semana" : "notas";
 }
 
 // Tag -> bucket mapping mirrors recording_archive_service: Task is a Todo; everything else
@@ -152,18 +155,17 @@ std::string BuildSummaryInstructionText(SummaryKind kind, bool intermediate)
                       "parágrafos curtos e evite tabelas em markdown.\n\n";
     } else {
         text += intermediate
-                    ? "Resuma as tarefas registradas nas transcrições disponíveis. Crie um resumo "
-                      "intermediário compacto que capture fielmente as prioridades, o que já foi "
-                      "concluído, as tarefas pendentes e os impedimentos, indicando se cada item "
-                      "foi concluído quando isso estiver claro na fonte. Seja factual, use texto "
-                      "simples e facilite a junção posterior com outros resumos. Evite tabelas "
-                      "em markdown.\n\n"
-                    : "Resuma as tarefas registradas nas transcrições disponíveis. Crie um resumo "
-                      "das prioridades, do que já foi concluído, das tarefas pendentes e de "
-                      "eventuais impedimentos, indicando se cada item foi concluído quando isso "
-                      "estiver claro na fonte. Seja conciso e fácil de ler rapidamente, e escreva "
-                      "em um tom encorajador e otimista que celebre o progresso e motive os "
-                      "próximos passos. Evite tabelas em markdown.\n\n";
+                    ? "Resuma a semana do diário (bullet journal) a partir dos itens abaixo "
+                      "(tarefas, eventos e notas, com período e situação). Crie um resumo "
+                      "intermediário compacto e factual: o que foi concluído, o que está pendente "
+                      "e os eventos. Use texto simples e evite tabelas em markdown.\n\n"
+                    : "Resuma a semana do diário (bullet journal) a partir dos itens abaixo "
+                      "(tarefas, eventos e notas, com período e situação). Diga o que já foi "
+                      "concluído, o que ainda está pendente (destacando o que ficou para trás), "
+                      "os próximos eventos e as notas importantes. Seja conciso e fácil de ler "
+                      "rapidamente, em um tom encorajador que celebre o progresso e ajude a "
+                      "decidir os próximos passos. Use parágrafos curtos e evite tabelas em "
+                      "markdown.\n\n";
     }
     // The transcripts may be in any language; the summary itself is always pt-BR.
     text += "Escreva o resumo em português do Brasil, mesmo que as transcrições estejam em "
@@ -199,7 +201,7 @@ void AppendSourceEntriesToPrompt(std::string* prompt, const std::vector<SourceEn
             prompt->append(entry.metadata.completed ? "Sim" : "Não");
             prompt->append("\n");
         }
-        prompt->append("Transcrição:\n");
+        prompt->append(entry.metadata.recording_id.empty() ? "Item:\n" : "Transcrição:\n");
         prompt->append(entry.text);
         prompt->append("\n\n");
     }
@@ -501,7 +503,7 @@ std::string JoinPath(const std::string& left, const std::string& right)
 
 const char* SummaryFileBase(SummaryKind kind)
 {
-    return kind == SummaryKind::kTodos ? "todos_latest" : "notes_latest";
+    return kind == SummaryKind::kWeek ? "week_latest" : "notes_latest";
 }
 
 bool ReadTextFile(const std::string& path, std::string* out)
@@ -609,7 +611,7 @@ bool EnsureSummaryDirectory(const std::string& dir)
 struct LoadCacheContext {
     bool storage_available = false;
     CacheEntrySnapshot notes = {};
-    CacheEntrySnapshot todos = {};
+    CacheEntrySnapshot week = {};
 };
 
 void LoadCacheEntry(const std::string& dir, SummaryKind kind, CacheEntrySnapshot* out)
@@ -636,7 +638,7 @@ esp_err_t LoadCacheOnMountedFilesystem(const char* mount_point, void* context)
     const std::string dir = JoinPath(mount_point, "summaries");
     ctx->storage_available = EnsureSummaryDirectory(dir);
     LoadCacheEntry(dir, SummaryKind::kNotes, &ctx->notes);
-    LoadCacheEntry(dir, SummaryKind::kTodos, &ctx->todos);
+    LoadCacheEntry(dir, SummaryKind::kWeek, &ctx->week);
     return ESP_OK;
 }
 
@@ -687,10 +689,11 @@ std::vector<RecordingEntry> FilterWindowedEntries(const std::vector<RecordingEnt
             : 0;
 
     for (const RecordingEntry& entry : entries) {
-        const bool matches_kind = kind == SummaryKind::kTodos
+        const bool matches_kind = kind == SummaryKind::kWeek
                                       ? IsTodoRecordingTag(entry.metadata.tag)
                                       : IsNotesRecordingTag(entry.metadata.tag);
-        if (!matches_kind) {
+        // Journal-owned takes are summarized with the week, not with the ideas collection.
+        if (!matches_kind || !entry.metadata.journal_item_id.empty()) {
             continue;
         }
         const int64_t entry_unix_seconds = ResolveEntryUnixSeconds(entry);
@@ -810,6 +813,80 @@ GenerationResult GenerateChunkedSummary(SummaryKind kind, const std::vector<Sour
     return result;
 }
 
+// One source entry per journal item of the current week (the week itself, its days) plus the
+// pending ones, so the summary can call out what was left behind.
+std::vector<SourceEntry> CollectWeekEntries(int* item_count_out)
+{
+    std::vector<SourceEntry> entries;
+    journal_period::Date today = {};
+    if (!journal_period::Today(&today)) {
+        return entries;
+    }
+    const std::string week = journal_period::WeekKey(today);
+    for (const journal_service::Item& item : journal_service::ListItems()) {
+        const std::string period(item.period.data(), item.period.size());
+        const bool in_week = period == week || (journal_period::LevelOf(period) ==
+                                                    journal_period::Level::kDay &&
+                                                journal_period::Contains(week, period));
+        const bool pending = journal_service::IsPending(item, today);
+        if (!in_week && !pending) {
+            continue;
+        }
+        const char* status = item.status == journal_service::ItemStatus::kDone ? "concluída"
+                             : item.status == journal_service::ItemStatus::kCancelled
+                                 ? "cancelada"
+                             : pending ? "pendente (período já passou)"
+                                       : "aberta";
+        std::string text = std::string(journal_service::TypeLabel(item.type)) + " - " + status +
+                           " - " + journal_period::Label(period, today) + ": " +
+                           std::string(item.text.data(), item.text.size());
+        SourceEntry entry = {};
+        entry.unix_seconds = item.created_at;
+        entry.text = std::move(text);
+        entries.push_back(std::move(entry));
+    }
+    std::sort(entries.begin(), entries.end(), [](const SourceEntry& a, const SourceEntry& b) {
+        return a.unix_seconds < b.unix_seconds;
+    });
+    if (item_count_out != nullptr) {
+        *item_count_out = static_cast<int>(entries.size());
+    }
+    return entries;
+}
+
+GenerationResult GenerateWeekSummary()
+{
+    GenerationResult result = {};
+    CacheMetadata metadata = {};
+    metadata.window_days = 7;
+    int item_count = 0;
+    const std::vector<SourceEntry> entries = CollectWeekEntries(&item_count);
+    metadata.source_item_count = item_count;
+    metadata.transcript_item_count = item_count;
+    if (entries.empty()) {
+        result.error_code = "no_summary_source";
+        result.error_message = "Ainda não há itens no diário desta semana";
+        result.metadata = metadata;
+        return result;
+    }
+    const std::string prompt = BuildPromptText(SummaryKind::kWeek, entries);
+    if (CountPromptTokens(prompt) > static_cast<size_t>(kSummaryInputTokenBudget)) {
+        metadata.truncated = true;
+        return GenerateChunkedSummary(SummaryKind::kWeek, entries, metadata);
+    }
+    std::string final_summary;
+    if (!GeneratePromptTextResult(prompt, &final_summary, &result.error_code,
+                                  &result.error_message)) {
+        result.metadata = metadata;
+        return result;
+    }
+    metadata.generated_unix_seconds = static_cast<int64_t>(time(nullptr));
+    result.success = true;
+    result.text = std::move(final_summary);
+    result.metadata = metadata;
+    return result;
+}
+
 GenerationResult GenerateSummary(SummaryKind kind)
 {
     GenerationResult result = {};
@@ -829,6 +906,10 @@ GenerationResult GenerateSummary(SummaryKind kind)
         result.error_message = "Gemini não configurado";
         ESP_LOGW(kTag, "Summary aborted: Gemini not configured");
         return result;
+    }
+
+    if (kind == SummaryKind::kWeek) {
+        return GenerateWeekSummary();
     }
 
     esp_err_t list_status = ESP_OK;
@@ -931,7 +1012,7 @@ bool PersistSummary(SummaryKind kind, const GenerationResult& result)
 void CompleteSummaryRequest(SummaryKind kind, const GenerationResult& result)
 {
     std::lock_guard<std::mutex> lock(s_mutex);
-    CacheEntrySnapshot* target = kind == SummaryKind::kTodos ? &s_snapshot.todos : &s_snapshot.notes;
+    CacheEntrySnapshot* target = kind == SummaryKind::kWeek ? &s_snapshot.week : &s_snapshot.notes;
     s_snapshot.request.in_flight = false;
     s_snapshot.request.kind = kind;
     s_snapshot.request.phase = result.success ? RequestPhase::kSucceeded : RequestPhase::kFailed;
@@ -1034,7 +1115,7 @@ bool RefreshCachedSummaries()
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.storage_available = context.storage_available;
         s_snapshot.notes = std::move(context.notes);
-        s_snapshot.todos = std::move(context.todos);
+        s_snapshot.week = std::move(context.week);
         NotifyLocked();
     }
     return true;
@@ -1050,14 +1131,14 @@ void ResetForFormat()
         return;
     }
     s_snapshot.notes = {};
-    s_snapshot.todos = {};
+    s_snapshot.week = {};
     s_snapshot.storage_available = false;
     NotifyLocked();
 }
 
 bool RequestSummary(SummaryKind kind)
 {
-    if (kind != SummaryKind::kNotes && kind != SummaryKind::kTodos) {
+    if (kind != SummaryKind::kNotes && kind != SummaryKind::kWeek) {
         return false;
     }
 
@@ -1099,8 +1180,8 @@ const char* SummaryKindName(SummaryKind kind)
     switch (kind) {
         case SummaryKind::kNotes:
             return "notes";
-        case SummaryKind::kTodos:
-            return "todos";
+        case SummaryKind::kWeek:
+            return "week";
         case SummaryKind::kNone:
         default:
             return "none";

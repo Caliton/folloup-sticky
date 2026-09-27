@@ -18,7 +18,6 @@ enum class SurfaceKey {
     kVibeCheckPage,
     kSummarizePage,
     kNotesPage,
-    kTodosPage,
     kFollowUpPage,
     kDetailsPage,
     kOnboardingPage,

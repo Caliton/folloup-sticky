@@ -146,7 +146,7 @@ NavigationModel BuildDashboardPageNavigationModel()
     NavigationModel model = {};
     model.scope = NavigationScope::kDashboard;
 
-    constexpr int kDashboardMenuItems = 7;  // epaper_ui::kDashboardMenuItemCount
+    constexpr int kDashboardMenuItems = 4;  // epaper_ui::kDashboardMenuItemCount
     for (int index = 0; index < kDashboardMenuItems; ++index) {
         AddItem(model, NavigationItemSection::kDashboardPageMenu,
                 NavigationItemRole::kDashboardMenuItem, index);
@@ -203,24 +203,10 @@ NavigationModel BuildNotesPageNavigationModel(int timeline_group_count)
         AddItem(model, NavigationItemSection::kNotesPageTimelineGroups,
                 NavigationItemRole::kNotesPageTimelineGroup, index);
     }
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSticky, 4);
-    AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterHome, 0);
-    return model;
-}
-
-NavigationModel BuildTodosPageNavigationModel(int timeline_group_count)
-{
-    NavigationModel model = {};
-    model.scope = NavigationScope::kTodos;
-
-    const int group_count = timeline_group_count > 0 ? timeline_group_count : 0;
-    for (int index = 0; index < group_count; ++index) {
-        AddItem(model, NavigationItemSection::kTodosPageTimelineGroups,
-                NavigationItemRole::kTodosPageTimelineGroup, index);
-    }
+    AddItem(model, NavigationItemSection::kNotesPageTimelineGroups,
+            NavigationItemRole::kNotesPageVibeCheckButton, 0);
+    AddItem(model, NavigationItemSection::kNotesPageTimelineGroups,
+            NavigationItemRole::kNotesPageSummarizeButton, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterSettings, 1);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterWifi, 2);
     AddItem(model, NavigationItemSection::kFooter, NavigationItemRole::kFooterTime, 3);

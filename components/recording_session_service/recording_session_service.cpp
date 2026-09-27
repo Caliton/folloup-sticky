@@ -62,6 +62,10 @@ Snapshot s_snapshot = {};
 std::string s_pending_recording_id = {};
 // Journal period of the screen the current take was started on (see Context::journal_period).
 std::string s_journal_context = {};
+// Journal item created for a take tagged "Tarefa" by hand (no Gemini classification); the
+// transcript, if one arrives, becomes its text.
+std::string s_manual_journal_item = {};
+constexpr const char* kAudioOnlyTaskText = "Tarefa em áudio";
 
 // Cue tokens make a late callback harmless: every cue we queue bumps the token, so a
 // result that arrives after the session has moved on (cancel, failure, a new recording)
@@ -445,8 +449,33 @@ void MarkBlockedLocked(BlockedReason reason)
 
 // Archives the in-memory take under `tag`, then starts its transcription. With `classify`
 // the transcription also picks the final tag, applied in HandleTranscriptionEvent.
+// Period for a take filed without a spoken date: the journal screen's, else today.
+std::string DefaultJournalPeriod()
+{
+    std::string period;
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        period = s_journal_context;
+    }
+    journal_period::Date today = {};
+    if (!journal_period::IsValidKey(period) && journal_period::Today(&today)) {
+        period = journal_period::DayKey(today);
+    }
+    return period;
+}
+
 bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classify)
 {
+    // Tasks live in the journal now: a take tagged "Tarefa" by hand is archived as a plain
+    // recording and linked to a new journal task (filed like a classified one would be).
+    const bool manual_task = !classify && tag == recording_archive_service::RecordingTag::kTask;
+    if (manual_task) {
+        tag = recording_archive_service::RecordingTag::kNote;
+    }
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        s_manual_journal_item.clear();
+    }
     recording_service::RecordedClipPtr clip = recording_service::GetRecordedClip();
     if (!clip || clip->empty()) {
         std::lock_guard<std::mutex> lock(s_mutex);
@@ -503,6 +532,21 @@ bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classif
         s_pending_recording_id = save_result.recording_id;
     }
 
+    if (manual_task && save_result.clip_saved) {
+        const std::string period = DefaultJournalPeriod();
+        const std::string item_id = journal_service::CreateItem(
+            journal_service::ItemType::kTask, kAudioOnlyTaskText, period, save_result.recording_id);
+        if (!item_id.empty()) {
+            (void)recording_archive_service::SetRecordingJournalItem(save_result.recording_id,
+                                                                     item_id);
+            std::lock_guard<std::mutex> lock(s_mutex);
+            s_manual_journal_item = item_id;
+            s_snapshot.journal_filed = true;
+            s_snapshot.journal_type = journal_service::TypeName(journal_service::ItemType::kTask);
+            s_snapshot.journal_period = period;
+        }
+    }
+
     if (should_transcribe && transcription_service::BeginTranscription(clip, classify)) {
         recording_service::DiscardClip();
         std::lock_guard<std::mutex> lock(s_mutex);
@@ -546,9 +590,9 @@ bool SaveAndTranscribe(recording_archive_service::RecordingTag tag, bool classif
 }
 
 
-// Where a classified take goes in the bullet journal. Ideas always stay in the collection.
-// Anything else is filed when it was recorded on the journal screen, when it is an event
-// (events only exist in the journal), or when the speech said when it should happen.
+// Where a classified take goes in the bullet journal. Ideas always stay in the collection and
+// tasks always go to the journal (there is no separate task list any more). Notes and events
+// are filed when recorded on the journal screen or when the speech said when; events always.
 struct JournalFiling {
     bool file = false;
     journal_service::ItemType type = journal_service::ItemType::kTask;
@@ -596,7 +640,7 @@ JournalFiling DecideJournalFiling(const std::string& tag, const std::string& whe
         return filing;
     }
     const std::string spoken = ResolveSpokenWhen(when, today);
-    if (screen_period.empty() && tag != "event" && spoken.empty()) {
+    if (screen_period.empty() && tag == "note" && spoken.empty()) {
         return filing;
     }
     filing.file = true;
@@ -678,6 +722,7 @@ bool BeginArchivedTranscription(const std::string& recording_id)
         s_snapshot.transcript_saved = false;
         s_pending_recording_id = recording_id;
         s_journal_context.clear();
+        s_manual_journal_item.clear();
     }
 
     if (transcription_service::BeginTranscription(clip)) {
@@ -966,6 +1011,7 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
     std::string classified_tag;
     std::string classified_when;
     std::string journal_context;
+    std::string manual_journal_item;
     {
         std::lock_guard<std::mutex> lock(s_mutex);
         s_snapshot.request_in_flight = event.snapshot.request_in_flight;
@@ -977,6 +1023,7 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
             classified_tag = event.snapshot.last_tag;
             classified_when = event.snapshot.last_when;
             journal_context = s_journal_context;
+            manual_journal_item = s_manual_journal_item;
         }
     }
 
@@ -988,7 +1035,11 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         const JournalFiling filing =
             DecideJournalFiling(classified_tag, classified_when, journal_context);
         std::string journal_item_id;
-        if (filing.file) {
+        if (!manual_journal_item.empty()) {
+            // Tagged "Tarefa" by hand before Gemini came back: the transcript names it.
+            (void)journal_service::SetText(manual_journal_item, transcript_text);
+            journal_item_id = manual_journal_item;
+        } else if (filing.file) {
             // The journal item owns the take from now on; the recording stays a Note on SD and
             // is hidden from the collections through its journal link.
             journal_item_id = journal_service::CreateItem(filing.type, transcript_text,
@@ -1031,10 +1082,14 @@ void HandleTranscriptionEvent(const transcription_service::Event& event)
         s_snapshot.last_transcript = transcript_text;
         s_snapshot.auto_tagged = !classified_tag.empty();
         s_snapshot.auto_tag = retagged ? tag : recording_archive_service::RecordingTag::kNote;
-        s_snapshot.journal_filed = !journal_item_id.empty();
-        s_snapshot.journal_type = s_snapshot.journal_filed ? journal_service::TypeName(filing.type)
-                                                           : std::string();
-        s_snapshot.journal_period = s_snapshot.journal_filed ? filing.period : std::string();
+        if (manual_journal_item.empty()) {
+            s_snapshot.journal_filed = !journal_item_id.empty();
+            s_snapshot.journal_type = s_snapshot.journal_filed
+                                          ? journal_service::TypeName(filing.type)
+                                          : std::string();
+            s_snapshot.journal_period = s_snapshot.journal_filed ? filing.period : std::string();
+        }
+        s_manual_journal_item.clear();
         s_snapshot.phase = Phase::kComplete;
         s_snapshot.request_in_flight = false;
         s_snapshot.last_status_message = save_result.transcript_saved

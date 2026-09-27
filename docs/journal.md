@@ -38,16 +38,20 @@ postpone / cancel) — the BuJo review.
 
 ## On the device
 
-- Dashboard → **Diário** (badge = pending count). The progress bar follows today's
-  journal tasks when there are any.
+- Dashboard menu: **Diário** (badge = pending count), **Ideias** (notes + ideas, with the
+  Checar vibe and Resumir buttons), Acompanhar, Livros. The progress bar follows today's
+  journal tasks. There is no separate task list: the old `todos/` folder is moved once to
+  `tarefas_antigas/` on the SD card at boot (out of the app; delete it over OTG if unwanted).
 - OK on the switcher enters it; UP/DOWN flips Ano / Mês / Semana / Dia live; OK or
   hold DOWN leaves it. OK on a group enters its items; OK on an item opens its actions.
 - **Voice**: Gemini classifies each take as task / note / idea / event and extracts a
   spoken "when" (`today`, `tomorrow`, `this_week`, `next_week`, `this_month`,
-  `next_month` or a date). A take becomes a journal item when it was recorded on the
-  Diário screen (filed under that level's current period), when it is an event, or when
-  it names a time. Ideas always stay in the collections. The recording is linked to the
-  item (`journal_item_id` in its sidecar) and hidden from the Notes/Tasks lists.
+  `next_month` or a date). Tasks and events always become journal items (spoken period,
+  else the Diário screen's period, else today); notes do when recorded on the Diário screen
+  or when they name a time; ideas always stay in Ideias. A take tagged "Tarefa" by hand
+  (no Gemini) becomes an audio-only journal task. The recording is linked to the item
+  (`journal_item_id` in its sidecar) and hidden from Ideias.
+- **Resumir → Semana** summarizes this week's journal items plus the pending ones.
 - Only this year's items plus the pending ones are materialized on the page, as
   one-line excerpts capped at 20 rows per group: every row string lives in internal RAM.
 

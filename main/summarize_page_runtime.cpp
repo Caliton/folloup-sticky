@@ -247,9 +247,9 @@ void RequestNotesSummary()
     (void)summary_service::RequestSummary(summary_service::SummaryKind::kNotes);
 }
 
-void RequestTodosSummary()
+void RequestWeekSummary()
 {
-    (void)summary_service::RequestSummary(summary_service::SummaryKind::kTodos);
+    (void)summary_service::RequestSummary(summary_service::SummaryKind::kWeek);
 }
 
 bool ExitActiveControl()

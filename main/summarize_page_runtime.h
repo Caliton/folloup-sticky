@@ -34,7 +34,7 @@ esp_err_t OnSummarySnapshot(const summary_service::Snapshot& snapshot, bool requ
 void ToggleSegment();
 void EnterScroll();
 void RequestNotesSummary();
-void RequestTodosSummary();
+void RequestWeekSummary();
 // Leave an entered segment/scroll control (DOWN double-click). Returns true if one was active.
 bool ExitActiveControl();
 

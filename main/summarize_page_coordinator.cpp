@@ -127,7 +127,7 @@ epaper_ui::SummarizePageState SummarizePageCoordinator::BuildState(
     epaper_ui::SummarizePageState state = {};
     state.navigation_focus_index = focus_.index();
 
-    state.segment_control.labels = {"Notas", "Tarefas", ""};
+    state.segment_control.labels = {"Ideias", "Semana", ""};
     state.segment_control.segment_count = epaper_ui::kSegmentControlDefaultSegmentCount;
     state.segment_control.selected_index = selected_segment_index_;
     state.segment_control.focused =
@@ -155,7 +155,7 @@ std::string SummarizePageCoordinator::BuildContentText(
     if (selected_segment_index_ == 0) {
         return summary_snapshot.notes.available ? summary_snapshot.notes.text : std::string();
     }
-    return summary_snapshot.todos.available ? summary_snapshot.todos.text : std::string();
+    return summary_snapshot.week.available ? summary_snapshot.week.text : std::string();
 }
 
 std::string SummarizePageCoordinator::BuildEmptyStateMessage(
@@ -164,7 +164,7 @@ std::string SummarizePageCoordinator::BuildEmptyStateMessage(
     if (selected_segment_index_ == 0 && summary_snapshot.notes.available) {
         return {};
     }
-    if (selected_segment_index_ == 1 && summary_snapshot.todos.available) {
+    if (selected_segment_index_ == 1 && summary_snapshot.week.available) {
         return {};
     }
     if (!gemini_ready) {

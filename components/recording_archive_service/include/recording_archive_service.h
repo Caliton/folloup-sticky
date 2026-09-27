@@ -118,6 +118,9 @@ bool MarkRecordingFollowUp(const std::string& recording_id, bool follow_up,
 bool UpdateRecordingTag(const std::string& recording_id, RecordingTag tag);
 // The WAV path of an archived recording ("" when it is gone). SD I/O on the caller.
 std::string ResolveRecordingPath(const std::string& recording_id);
+// One-time move of the retired Tasks collection (`todos/`) to `tarefas_antigas/` on the SD
+// card, out of the app's sight (tasks live in the journal now). Returns the files moved.
+int ArchiveLegacyTasks();
 // Link (or unlink with "") a recording to the journal item that owns it.
 bool SetRecordingJournalItem(const std::string& recording_id, const std::string& journal_item_id);
 

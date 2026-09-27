@@ -18,7 +18,6 @@
 #include "epaper_ui/onboarding_page.h"
 #include "epaper_ui/sticky_note.h"
 #include "epaper_ui/summarize_page.h"
-#include "epaper_ui/todos_page.h"
 #include "epaper_ui/journal_page.h"
 #include "epaper_ui/toast.h"
 #include "epaper_ui/vibe_check_page.h"
@@ -35,7 +34,6 @@ enum class ScreenId {
     kVibeCheck,
     kSummarize,
     kNotes,
-    kTodos,
     kFollowUp,
     kDetails,
     kOnboarding,
@@ -103,7 +101,6 @@ esp_err_t SetDashboardPageState(const epaper_ui::DashboardPageState& state);
 esp_err_t SetVibeCheckPageState(const epaper_ui::VibeCheckPageState& state);
 esp_err_t SetSummarizePageState(const epaper_ui::SummarizePageState& state);
 esp_err_t SetNotesPageState(const epaper_ui::NotesPageState& state);
-esp_err_t SetTodosPageState(const epaper_ui::TodosPageState& state);
 esp_err_t SetJournalPageState(const epaper_ui::JournalPageState& state);
 esp_err_t SetFollowUpPageState(const epaper_ui::FollowUpPageState& state);
 esp_err_t SetDetailsPageState(const epaper_ui::DetailsPageState& state);

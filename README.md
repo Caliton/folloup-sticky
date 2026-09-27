@@ -21,7 +21,7 @@ Ele roda na [Waveshare ESP32-S3-ePaper-3.97](https://docs.waveshare.com/ESP32-S3
 
 ### 1. Grave no momento da ideia
 
-Segure o BOOT e fale. Cada registro começa como uma gravação de voz (até 60 segundos), marcada como **Ideia**, **Tarefa** ou **Nota**, para você guardar o pensamento na hora sem parar para digitar.
+Segure o BOOT e fale. Cada registro começa como uma gravação de voz (até 60 segundos), para você guardar o pensamento na hora sem parar para digitar. O Gemini decide o que é: **tarefas** e **eventos** vão para o **Diário**, **ideias** e **notas** ficam em **Ideias**.
 
 ### 2. Transcrição e resumo com o Gemini
 
@@ -33,13 +33,13 @@ Depois que a gravação é salva, o Gemini transcreve o áudio no idioma falado 
 
 Gravações, transcrições e resumos ficam no cartão SD do próprio aparelho. Seus pensamentos continuam com você, no seu armazenamento.
 
-### 4. Checar a vibe das ideias
+### 4. Ideias, com "Checar vibe" e "Resumir"
 
-Nem toda ideia envelhece bem. Revise cada uma e decida se ela ainda faz sentido ou se é melhor descartar e seguir em frente com a cabeça leve.
+Ideias e notas soltas ficam em **Ideias**. Embaixo da lista, **Checar vibe** revisa as ideias uma a uma (nem toda ideia envelhece bem) e **Resumir** gera um resumo das ideias ou da semana do Diário.
 
-### 5. Acompanhe tarefas e notas
+### 5. Acompanhe o que importa
 
-Marque uma tarefa ou nota para acompanhar e ela não sai do seu radar. O Followup ajuda você a manter o foco no que realmente precisa ser feito.
+Marque uma ideia ou nota para acompanhar e ela não sai do seu radar. O Followup ajuda você a manter o foco no que realmente precisa ser feito.
 
 ### 6. Seus acompanhamentos como lembretes fixos
 
@@ -51,7 +51,7 @@ Planeje como num bullet journal: **Ano** (o que importa em cada mês), **Mês**,
 
 O que ficou para trás aparece em **Pendentes**, no topo do Dia, para você decidir item por item: fazer hoje, levar para a semana ou para o mês, ou cancelar.
 
-Grave direto no Diário e a gravação cai no período que está na tela. Em qualquer tela, fale quando ("pra amanhã", "semana que vem", "em novembro") e o Gemini arquiva no período certo. Eventos ("reunião...", "consulta...") vão sempre para o Diário.
+Grave direto no Diário e a gravação cai no período que está na tela. Em qualquer tela, fale quando ("pra amanhã", "semana que vem", "em novembro") e o Gemini arquiva no período certo. Tarefas e eventos ("reunião...", "consulta...") vão sempre para o Diário; sem data, caem no dia de hoje.
 
 O planejamento pesado fica no **app web** ([followup-web](https://github.com/Caliton/followup-web)): em *Configurações → Conectar app*, o aparelho mostra um código que você digita no app, e daí em diante os dois se sincronizam sozinhos. Detalhes técnicos em [docs/journal.md](docs/journal.md).
 
@@ -159,4 +159,4 @@ Outros detalhes úteis para quem mexe no firmware:
 
 O valor do Followup é ter um lugar silencioso e sempre visível para guardar seus pensamentos e manter à frente o que importa. Em vez de perder uma ideia num aplicativo de notas esquecido ou enterrar uma tarefa no meio das notificações, você fala na hora. O Gemini transforma a fala em texto limpo e num resumo, e tudo fica guardado, com privacidade, no seu cartão SD.
 
-As ideias passam pelo "Checar vibe", e você só leva adiante o que ainda faz sentido. Tarefas e notas viram acompanhamentos, para você não perder o rumo. O que mais importa fica fixo na tela e-paper: um lembrete constante e discreto do que vem a seguir. E, quando sobrar um tempo, a mesma tela vira um leitor de livros.
+As ideias passam pelo "Checar vibe", e você só leva adiante o que ainda faz sentido. As tarefas descem do ano até o dia no Diário, para você não perder o rumo. O que mais importa fica fixo na tela e-paper: um lembrete constante e discreto do que vem a seguir. E, quando sobrar um tempo, a mesma tela vira um leitor de livros.

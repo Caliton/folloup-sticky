@@ -336,7 +336,15 @@ bool NotesPageCoordinator::IsRoleFocused(page_navigation::NavigationItemRole rol
 epaper_ui::NotesPageState NotesPageCoordinator::BuildState() const
 {
     epaper_ui::NotesPageState state = {};
-    state.title_text = "Notas";
+    state.title_text = "Ideias";
+    state.vibe_check_button = {
+        .label_text = "Checar vibe",
+        .selected = IsRoleFocused(page_navigation::NavigationItemRole::kNotesPageVibeCheckButton),
+    };
+    state.summarize_button = {
+        .label_text = "Resumir",
+        .selected = IsRoleFocused(page_navigation::NavigationItemRole::kNotesPageSummarizeButton),
+    };
     state.navigation_focus_index = focus_.index();
 
     epaper_ui::TimelineListState timeline = {};

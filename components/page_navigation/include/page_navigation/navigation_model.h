@@ -15,7 +15,6 @@ enum class NavigationScope : uint8_t {
     kVibeCheck,
     kSummarize,
     kNotes,
-    kTodos,
     kFollowUp,
     kDetails,
     kOnboarding,
@@ -33,7 +32,6 @@ enum class NavigationItemSection : uint8_t {
     kVibeCheckPageControls,
     kSummarizePageControls,
     kNotesPageTimelineGroups,
-    kTodosPageTimelineGroups,
     kFollowUpPageTimelineGroups,
     kDetailsPageControls,
     kOnboardingPageControls,
@@ -75,7 +73,8 @@ enum class NavigationItemRole : uint8_t {
     kSummarizePageScrollContainer,
     kSummarizePageGetSummaryButton,
     kNotesPageTimelineGroup,
-    kTodosPageTimelineGroup,
+    kNotesPageVibeCheckButton,
+    kNotesPageSummarizeButton,
     kFollowUpPageTimelineGroup,
     kDetailsPageScrollContainer,
     kDetailsPageBackButton,
@@ -111,7 +110,6 @@ NavigationModel BuildDashboardPageNavigationModel();
 NavigationModel BuildVibeCheckPageNavigationModel();
 NavigationModel BuildSummarizePageNavigationModel();
 NavigationModel BuildNotesPageNavigationModel(int timeline_group_count);
-NavigationModel BuildTodosPageNavigationModel(int timeline_group_count);
 NavigationModel BuildFollowUpPageNavigationModel(int timeline_group_count);
 // with_transcribe adds a focusable Transcribe button (shown only for audio-only recordings that
 // have no transcript yet); when false the page has just the Back button.

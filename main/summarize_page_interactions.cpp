@@ -36,7 +36,7 @@ ActivateResult HandlePrimaryActivate(SummarizePageCoordinator& coordinator, bool
         }
         result.intent = coordinator.selected_segment_index() == 0
                             ? ActivateIntent::kRequestNotesSummary
-                            : ActivateIntent::kRequestTodosSummary;
+                            : ActivateIntent::kRequestWeekSummary;
         return result;
     }
 
@@ -99,9 +99,9 @@ void ApplyPrimaryActivateResult(const ActivateResult& result, const ActivateCall
                 callbacks.request_notes_summary();
             }
             break;
-        case ActivateIntent::kRequestTodosSummary:
-            if (callbacks.request_todos_summary) {
-                callbacks.request_todos_summary();
+        case ActivateIntent::kRequestWeekSummary:
+            if (callbacks.request_week_summary) {
+                callbacks.request_week_summary();
             }
             break;
         case ActivateIntent::kNone:

@@ -376,6 +376,22 @@ bool HandleItemActionSelection(int selected_index)
     return true;
 }
 
+OpenTarget s_pending_open = OpenTarget::kNone;
+
+void RequestOpen(OpenTarget target)
+{
+    std::lock_guard<std::mutex> lock(s_mutex);
+    s_pending_open = target;
+}
+
+OpenTarget ConsumePendingOpen()
+{
+    std::lock_guard<std::mutex> lock(s_mutex);
+    const OpenTarget target = s_pending_open;
+    s_pending_open = OpenTarget::kNone;
+    return target;
+}
+
 std::string ConsumePendingViewDetails()
 {
     std::lock_guard<std::mutex> lock(s_mutex);
