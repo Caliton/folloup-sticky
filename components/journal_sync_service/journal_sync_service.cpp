@@ -580,6 +580,7 @@ std::string BuildPullQuery(const std::string& cursor)
 RoundResult Pull(Credentials* credentials)
 {
     const std::string url = Base() + "/users/" + credentials->owner_uid + ":runQuery";
+    const std::string starting_cursor = credentials->cursor;
     int applied = 0;
     for (int page = 0; page < kMaxPullPages; ++page) {
         const HttpResult response = Http(HTTP_METHOD_POST, url, BuildPullQuery(credentials->cursor),
@@ -626,7 +627,9 @@ RoundResult Pull(Credentials* credentials)
         }
     }
     journal_service::EndRemoteBatch();
-    SaveCredentials(*credentials);
+    if (credentials->cursor != starting_cursor) {
+        SaveCredentials(*credentials);  // spare the flash when nothing new arrived
+    }
     if (applied > 0) {
         ESP_LOGI(kTag, "Pulled %d change(s)", applied);
     }
