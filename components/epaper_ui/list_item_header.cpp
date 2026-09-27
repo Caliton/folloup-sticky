@@ -169,12 +169,14 @@ void DrawListItemHeader(uint8_t* framebuffer,
     // Leading icon.
     const int icon_slot_size = ClampPositive(style.icon_slot_size);
     int cursor_x = bounds.x;
-    if (state.icon_asset != nullptr) {
+    // No icon: the time/mark starts at the left edge instead of after an empty slot.
+    const bool has_icon = state.icon_asset != nullptr;
+    if (has_icon) {
         const UiRect slot = {cursor_x, bounds.y, icon_slot_size, bounds.height};
         DrawCenteredIcon(framebuffer, raw_width, raw_height, portrait_width, portrait_height, slot,
                          state.icon_asset, icon_color, outline, stroke, outline_color);
+        cursor_x += icon_slot_size;
     }
-    cursor_x += icon_slot_size;
 
     if (content_right <= cursor_x) {
         return;
@@ -184,7 +186,7 @@ void DrawListItemHeader(uint8_t* framebuffer,
     const int dot_diameter = ClampPositive(style.divider_dot_diameter);
     const bool has_time = !state.time_text.empty();
     const bool has_detail = !state.minute_seconds_text.empty();
-    if ((has_time || has_detail) && icon_slot_size > 0) {
+    if ((has_time || has_detail) && has_icon && icon_slot_size > 0) {
         cursor_x += content_gap;
     }
 

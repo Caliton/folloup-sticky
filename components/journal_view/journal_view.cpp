@@ -60,6 +60,7 @@ epaper_ui::ListItemState MakeRow(const ViewItem& item, const std::string& mark)
     row.header.time_text = item.status == ItemStatus::kCancelled ? "Cancelada" : mark;
     row.header.tag_text = TypeLabel(item.type);
     row.body_text = item.text;
+    row.accessory_on_body_row = true;
     switch (item.type) {
         case ItemType::kTask:
             row.accessory.kind = epaper_ui::ListItemAccessoryKind::kCheckbox;

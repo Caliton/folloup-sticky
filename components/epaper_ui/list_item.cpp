@@ -190,10 +190,18 @@ void DrawListItem(uint8_t* framebuffer,
     }
 
     const UiRect header_cell = grid.CellBounds(portrait_width, 0, 0);
+    const UiRect accessory_row =
+        state.accessory_on_body_row && !state.body_text.empty()
+            ? grid.CellBounds(portrait_width, 0, 1)
+            : header_cell;
     if (state.accessory.kind == ListItemAccessoryKind::kCheckbox && style.checkbox.size > 0) {
         const CheckboxStyle checkbox_style = BuildCheckboxStyle(style);
-        const int checkbox_y = header_cell.y +
-                               std::max(0, (header_cell.height - style.checkbox.size) / 2);
+        // On the body row the box is taller than the text line: center it on the line even if
+        // that means starting a little above it.
+        const int checkbox_offset = (accessory_row.height - style.checkbox.size) / 2;
+        const int checkbox_y =
+            accessory_row.y + (state.accessory_on_body_row ? checkbox_offset
+                                                          : std::max(0, checkbox_offset));
         const CheckboxState checkbox_state = {.checked = state.accessory.checked,
                                               .selected = state.selected};
         DrawCheckbox(framebuffer, raw_width, raw_height, portrait_width, portrait_height,
@@ -211,7 +219,7 @@ void DrawListItem(uint8_t* framebuffer,
             state.selected ? style.checkbox.selected_icon_color : style.checkbox.icon_color;
         const int icon_x =
             bounds.x + ClampPositive(style.padding_left) + CenterOffset(slot_size, draw_width);
-        const int icon_y = header_cell.y + CenterOffset(header_cell.height, draw_height);
+        const int icon_y = accessory_row.y + CenterOffset(accessory_row.height, draw_height);
         if (state.selected && style.selected_content_outlined) {
             ForEachOutlineOffset(style.selected_content_stroke_thickness, [&](int dx, int dy) {
                 DrawPortraitMonoAsset(framebuffer, raw_width, raw_height, portrait_width,

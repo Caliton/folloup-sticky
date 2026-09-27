@@ -43,6 +43,9 @@ struct ListItemState {
     std::string body_text = {};
     bool selected = false;
     ListItemAccessoryState accessory = {};
+    // Center the accessory on the body line instead of the header line (journal rows, whose
+    // header is only a small period mark + type: the checkbox belongs next to the text).
+    bool accessory_on_body_row = false;
     ListItemActionsState actions = {};
 
     bool operator==(const ListItemState& other) const = default;
