@@ -42,7 +42,7 @@ constexpr const char* kNvsCursor = "cursor";
 
 constexpr uint32_t kTaskStackBytes = 8192;
 // TLS + JSON need headroom beyond the task stack; below this the round is postponed.
-constexpr size_t kMinFreeInternalBytes = 28 * 1024;
+constexpr size_t kMinFreeInternalBytes = 20 * 1024;
 constexpr int kHttpTimeoutMs = 20000;
 constexpr size_t kMaxResponseBytes = 512 * 1024;
 constexpr int64_t kPeriodicSyncUs = 15LL * 60 * 1000 * 1000;

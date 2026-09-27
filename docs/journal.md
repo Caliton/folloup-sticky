@@ -73,7 +73,7 @@ Firestore document fields (`users/{uid}/items/{id}`): `type`, `text` (≤ 500 ch
 security rules live in the web repo (`firestore.rules`).
 
 The worker is a short-lived task with an 8 KB internal-RAM stack (TLS); it only starts
-while no transcription is in flight and the internal heap has ≥ 28 KB free. cJSON
+while no transcription is in flight and the internal heap has ≥ 20 KB free. cJSON
 allocations prefer PSRAM app-wide (`main/main.cpp`), so a sync page cannot exhaust the
 internal heap. The Firebase project and public web API key are Kconfig options
 (`FOLLOWUP_FIREBASE_PROJECT_ID`, `FOLLOWUP_FIREBASE_API_KEY`).
