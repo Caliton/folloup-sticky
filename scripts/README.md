@@ -52,3 +52,23 @@ python3 scripts/generate_epaper_fonts.py \
 
 Do not hand-edit generated asset files once they are added. Update the source
 PNG/TTF files and regenerate instead.
+
+## Screen Preview (sem a placa)
+
+`preview_screens.py` compiles the real `components/epaper_ui` drawing code for
+the PC and renders every screen to PNG, so layout/text changes can be checked
+without flashing:
+
+```bash
+python scripts/preview_screens.py            # todas as telas + _todas.png
+python scripts/preview_screens.py wifi notas # só as telas cujo nome contém o filtro
+python scripts/preview_screens.py --scale 2  # PNGs ampliados
+```
+
+Output goes to `build/screen_preview/telas/`. Sample states for each screen
+live in `screen_preview/screen_preview.cpp`; add a scene there when a new page
+or overlay is added. It needs the `zig` compiler
+(`python -m pip install ziglang --target D:/esp/tools/ziglang`); the first
+build takes a few minutes, later runs only recompile changed files.
+Hardware behavior (Wi-Fi, audio, sleep, RAM, refresh/ghosting) still needs the
+board.
