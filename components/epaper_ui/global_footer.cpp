@@ -149,17 +149,6 @@ UiRect MicBounds(int portrait_width, int portrait_height, const GlobalFooterStat
             measured.height};
 }
 
-// Spread the buttons over the button column (sized for six) so a shorter footer doesn't leave
-// them bunched on the left with an empty gap before the mic.
-int SpreadGap(int column_width, int button_count)
-{
-    if (button_count <= 1) {
-        return kButtonGap;
-    }
-    const int free_width = column_width - (button_count * design::global_footer::kButtonSize);
-    return std::max(kButtonGap, free_width / (button_count - 1));
-}
-
 UiRect FooterButtonBounds(int portrait_width,
                           int portrait_height,
                           const GlobalFooterState& state,
@@ -175,8 +164,6 @@ UiRect FooterButtonBounds(int portrait_width,
 
     int button_count = 0;
     const std::array<VisibleFooterButton, 4> buttons = VisibleFooterButtons(state, &button_count);
-    const int button_size = design::global_footer::kButtonSize;
-    const int spread_gap = SpreadGap(button_cell.width, button_count);
     int cursor_x = button_cell.x;
     for (int index = 0; index < button_count; ++index) {
         const VisibleFooterButton& button = buttons[static_cast<size_t>(index)];
@@ -191,7 +178,7 @@ UiRect FooterButtonBounds(int portrait_width,
         if (button.item == item) {
             return bounds;
         }
-        cursor_x += button_size + spread_gap;
+        cursor_x += design::global_footer::kButtonSize + kButtonGap;
     }
 
     return {};
@@ -300,7 +287,6 @@ void DrawGlobalFooter(uint8_t* framebuffer,
 
     int button_count = 0;
     const std::array<const FooterButtonState*, 4> buttons = VisibleButtons(state, &button_count);
-    const int spread_gap = SpreadGap(button_cell.width, button_count);
     int cursor_x = button_cell.x;
     for (int index = 0; index < button_count; ++index) {
         const FooterButtonState* button = buttons[static_cast<size_t>(index)];
@@ -317,7 +303,7 @@ void DrawGlobalFooter(uint8_t* framebuffer,
                        button_cell.y + std::max(0, (button_cell.height - button_style.size) / 2),
                        {.asset = ResolveButtonIcon(*button), .selected = button->selected},
                        button_style);
-        cursor_x += design::global_footer::kButtonSize + spread_gap;
+        cursor_x += design::global_footer::kButtonSize + kButtonGap;
     }
 
     if (!state.mic.visible) {
